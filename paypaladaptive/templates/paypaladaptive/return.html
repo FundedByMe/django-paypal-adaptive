@@ -1,0 +1,15 @@
+{% extends "paypaladaptive/base.html" %}
+{% load i18n %}
+
+{% block js-libs %}
+    {% if is_embedded %}
+    <script src="http://www.paypalobjects.com/js/external/dg.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        window.onload = function() {
+            dgFlow = top.dgFlow || top.opener.top.dgFlow; 
+            dgFlow.closeFlow(); 
+            top.close();
+        }
+    </script>
+    {% endif %}
+{% endblock js-libs %}

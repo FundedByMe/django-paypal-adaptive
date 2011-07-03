@@ -1,0 +1,30 @@
+<!doctype html>  
+{% load i18n %}
+
+{% comment %}
+    
+    This template can be overridden in your project by creating a 'paypaladaptive' directory 
+    in your main templates directory, and copying this file into it.  From there, customize 
+    as you wish.  You can also copy any of the other action templates and modify them as well.
+    
+{% endcomment %}
+
+<html lang="{{ LANGUAGE_CODE }}">
+    {% block head %}
+    <head>
+      <meta charset="utf-8">
+      <title>{% block title %}Paypal Adaptive Payments{% endblock title %}</title>
+      
+      {% block css-styles %}{% endblock css-styles %}
+    
+    </head>
+    {% endblock head %}
+    
+    {% block body %}
+    <body>
+        {% block content %}{% endblock content %}
+    
+        {% block js-libs %}{% endblock js-libs %}
+    </body>
+    {% endblock body %}
+</html>
