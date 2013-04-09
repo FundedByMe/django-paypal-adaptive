@@ -185,11 +185,10 @@ def preapproval_return(request, preapproval_id, secret_uuid,
 @require_POST
 @csrf_exempt
 @transaction.autocommit
-def payment_ipn(request, id, secret_uuid):
-    '''
-    Incoming IPN POST request from Paypal
-    '''
-    logger.debug("IPN received for Payment %s" % id)
+def payment_ipn(request, payment_id, secret_uuid):
+    """Incoming IPN POST request from Paypal"""
+
+    logger.debug("IPN received for Payment %s" % payment_id)
     
     try:
         ipn = api.IPN(request)
@@ -199,14 +198,16 @@ def payment_ipn(request, id, secret_uuid):
         return HttpResponseBadRequest('verify failed')
          
     try:
-        payment = Payment.objects.get(id=id)
+        payment = Payment.objects.get(id=payment_id)
     except ObjectDoesNotExist:
-        logger.warning('Could not find Payment ID %s, replying to IPN with 404.' % id)
+        logger.warning("Could not find Payment ID %s, replying to IPN with"
+                       " 404." % payment_id)
         raise Http404
     
     if payment.secret_uuid != secret_uuid:
         payment.status = 'error'
-        payment.status_detail = 'IPN secret "%s" did not match' % secret_uuid
+        payment.status_detail = _(u"IPN secret \"%s\" did not match")\
+                                % secret_uuid
         payment.save()
         return HttpResponseBadRequest('secret mismatch')
     
@@ -216,8 +217,10 @@ def payment_ipn(request, id, secret_uuid):
         
         if payment.amount != ipn.transactions[0].amount:
             payment.status = 'error'
-            payment.status_detail = "IPN amounts didn't match. Payment requested %s. Payment made %s" % \
-                (payment.amount, ipn.transactions[0].amount)
+            payment.status_detail = _(u"IPN amounts didn't match. Payment "
+                                      u"requested %s. Payment made %s") %\
+                                    (payment.amount,
+                                     ipn.transactions[0].amount)
         else:
             payment.status = 'completed'
 
