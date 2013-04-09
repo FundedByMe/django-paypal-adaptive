@@ -95,6 +95,8 @@ class Payment(PaypalAdaptive):
     @transaction.autocommit
     def process(self, remote_addr=None, preapproval_key=None,
                 secondary_receiver=None, seller_email=None):
+        """Process the payment"""
+
         self.save()
 
         ipn_url = self.ipn_url if settings.USE_IPN else None
@@ -135,6 +137,8 @@ class Payment(PaypalAdaptive):
 
     @transaction.autocommit
     def refund(self):
+        """Refund this payment"""
+
         self.save()
         
         if self.status != 'completed':
