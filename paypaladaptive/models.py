@@ -8,10 +8,11 @@ from django.core.urlresolvers import reverse
 from django.db import models, transaction
 from django.db.models.fields import CharField
 from django.utils.translation import ugettext_lazy as _
-from money.contrib.django.models.fields import MoneyField
+# from money.contrib.django.models.fields import MoneyField
 from south.modelsinspector import add_introspection_rules
 import api
 import settings
+from django.contrib.sites.models import Site
 
 try:
     import uuid
@@ -42,7 +43,8 @@ class PaypalAdaptive(models.Model):
     '''
     Base fields used by all PaypalAdaptive models
     '''
-    amount = MoneyField(_(u'amount'), max_digits=6, decimal_places=2)
+#     amount = MoneyField(_(u'amount'), max_digits=6, decimal_places=2)
+    amount = models.DecimalField(_(u'amount'), max_digits=6, decimal_places=2)
     created_date = models.DateTimeField(_(u'created on'), auto_now_add=True)
     secret_uuid = UUIDField(_(u'secret UUID')) # to verify return_url
     debug_request = models.TextField(_(u'raw request'), blank=True, null=True)
@@ -74,33 +76,48 @@ class Payment(PaypalAdaptive):
     status_detail = models.CharField(_(u'detailed status'), max_length=2048)
 
     @transaction.autocommit
-    def process(self, request):
+    # def process(self, request, **kwargs):
+    def process(self, **kwargs):
         self.save()
         
         ipn_url = None
         if settings.USE_IPN:
-            ipn_url = request.build_absolute_uri(reverse('paypal-adaptive-ipn',
-                                                         kwargs={'payment_id': self.id, 
-                                                                 'payment_secret_uuid': self.secret_uuid}))
+	        # ipn_url = request.build_absolute_uri(reverse('paypal-adaptive-ipn',
+	        # 	                                                         kwargs={'id': self.id, 
+	        # 	                                                                 'secret_uuid': self.secret_uuid}))
+	        ipn_url = "http://%s%s" % (Site.objects.get_current(), reverse('paypal-adaptive-ipn', kwargs={'id': self.id, 'secret_uuid': self.secret_uuid}))
 
         seller_paypal_email = None
         if settings.USE_CHAIN:
-            seller_paypal_email = self.owner.email if self.owner else None
-
-        return_url = request.build_absolute_uri(reverse('paypal-adaptive-return', 
-                                                         kwargs={'payment_id': self.id,
-                                                                 'payment_secret_uuid': self.secret_uuid}))
-        cancel_url = request.build_absolute_uri(reverse('paypal-adaptive-cancel', 
-                                                         kwargs={'payment_id': self.id}))
-                     
-        pay = api.Pay(self.amount, return_url, cancel_url, request.META['REMOTE_ADDR'],
+            seller_paypal_email = kwargs['seller_email'] if kwargs['seller_email'] else None
+            # seller_paypal_email = self.owner.email if self.owner else None
+        
+        return_url = "http://%s%s" % (Site.objects.get_current(), 	reverse('paypal-adaptive-payment-return', kwargs={'id': self.id, 'secret_uuid': self.secret_uuid}))
+        # return_url = request.build_absolute_uri(reverse('paypal-adaptive-payment-return', 
+        # 	                                                         kwargs={'id': self.id,
+        # 	                                                                 'secret_uuid': self.secret_uuid}))
+        
+        cancel_url = "http://%s%s" % (Site.objects.get_current(), reverse('paypal-adaptive-payment-cancel', kwargs={'id': self.id}))
+        # cancel_url = request.build_absolute_uri(reverse('paypal-adaptive-payment-cancel', 
+        # 	                                                         kwargs={'id': self.id}))
+        
+        # CHECK IF A PREAPPROVAL EXISTS
+        if kwargs['preapproval_key']:
+            try:
+            	pay = api.Pay(self.amount, return_url, cancel_url, request.META['REMOTE_ADDR'],
+	                      seller_paypal_email, ipn_url, kwargs['preapproval_key'], kwargs['secondary_receiver'])
+            except Exception, e:
+            	pay = api.Pay(self.amount, return_url, cancel_url, Site.objects.get_current(), seller_paypal_email, ipn_url, kwargs['preapproval_key'], kwargs['secondary_receiver'])
+			
+        else:
+            pay = api.Pay(self.amount, return_url, cancel_url, request.META['REMOTE_ADDR'],
                       seller_paypal_email, ipn_url)
     
         self.debug_request = pay.raw_request
         self.debug_response = pay.raw_response
         self.pay_key = pay.paykey
         
-        if pay.status == 'CREATED':
+        if pay.paykey:
             self.status = 'created'
         else:
             self.status = 'error'
@@ -127,6 +144,9 @@ class Payment(PaypalAdaptive):
     def next_url(self):
         return '%s?cmd=_ap-payment&paykey=%s' \
             % (settings.PAYPAL_PAYMENT_HOST, self.pay_key)
+            
+    def __unicode__(self):
+        return self.pay_key
 
 
 class Refund(PaypalAdaptive):
@@ -148,7 +168,6 @@ class Refund(PaypalAdaptive):
     
     # TODO: finish model
     
-
 class Preapproval(PaypalAdaptive):
     '''
     Models a preapproval made using Paypal 
@@ -170,7 +189,7 @@ class Preapproval(PaypalAdaptive):
     status_detail = models.CharField(_(u'detailed status'), max_length=2048)
 
     @transaction.autocommit
-    def process(self, request):
+    def process(self, request, **kwargs):
         self.save()
         
         ipn_url = None
@@ -186,13 +205,14 @@ class Preapproval(PaypalAdaptive):
                                                          kwargs={'id': self.id}))
                      
         preapprove = api.Preapprove(self.amount, return_url, cancel_url, request.META['REMOTE_ADDR'], 
-                                    ipn_url=ipn_url, starting_date=self.created_date, ending_date=self.valid_until_date)
+                                    ipn_url=ipn_url, starting_date=self.created_date, ending_date=kwargs['ending_date'], 
+                                    project_id=kwargs['project_id'], currency_code=kwargs['currency_code'])
     
         self.debug_request = preapprove.raw_request
         self.debug_response = preapprove.raw_response
         self.preapproval_key = preapprove.preapprovalkey
         
-        if preapprove.status == 'CREATED':
+        if preapprove.preapprovalkey:
             self.status = 'created'
         else:
             self.status = 'error'
@@ -200,6 +220,32 @@ class Preapproval(PaypalAdaptive):
         self.save()
         
         return self.status == 'created'
+        
+    @transaction.autocommit
+    def cancel_preapproval(self):
+        cancel = api.CancelPreapproval(preapproval_key=self.preapproval_key)
+    
+        self.debug_request = cancel.raw_request
+        self.debug_response = cancel.raw_response
+        
+        self.status = 'canceled'
+        self.save()
+        return self.status == 'canceled'
+        
+    @transaction.autocommit
+    def mark_as_used(self, request):
+        self.status = 'used'
+        self.save()
+        
+        return self.status == 'used'
+    
+    # custom nesxt URL
+    def next_url(self):
+        return '%s?cmd=_ap-preapproval&preapprovalkey=%s' \
+            % (settings.PAYPAL_PAYMENT_HOST, self.preapproval_key)
+            
+    def __unicode__(self):
+        return self.preapproval_key
 
 
 '''

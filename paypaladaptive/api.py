@@ -5,7 +5,7 @@ Classes and helper functions that implement (a portion of) the Paypal Adaptive A
 from datetime import datetime, timedelta
 from dateutil.parser import parse
 from django.utils import simplejson as json
-from money.Money import Money, Currency
+# from money.Money import Money, Currency
 from pytz import timezone, utc
 from urllib2 import URLError
 import logging
@@ -103,7 +103,9 @@ class PayError(PaypalAdaptiveApiError):
 
 class RefundError(PaypalAdaptiveApiError):
     pass
-
+    
+class CancelPreapprovalError(PaypalAdaptiveApiError):
+    pass
 
 class PreapproveError(PaypalAdaptiveApiError):
     pass
@@ -117,35 +119,47 @@ class Pay(object):
     '''
     Models the Pay API operation
     '''
+    
     def __init__(self, amount, return_url, cancel_url, remote_address, 
-                 secondary_receiver=None, ipn_url=None, preapproval_key=None):
+                 seller_paypal_email=None, ipn_url=None, preapproval_key=None, secondary_receiver=None, currency_code=None):
         
-        if not amount or not isinstance(amount, Money) or amount <= Money('0.00', amount.currency):
-            raise ValueError("amount must be a positive instance of Money")
+#         if not amount or not isinstance(amount, Money) or amount <= Money('0.00', amount.currency):
+        # if not amount or amount <= '0.00':
+#             raise ValueError("amount must be a positive instance of Money")
         
         self._amount = amount
         
         headers = _build_headers(remote_address)
         data = {
             'actionType': 'PAY',
-            'currencyCode': amount.currency.code,
+#             'currencyCode': amount.currency.code,
+            'currencyCode': "SEK",
             'returnUrl': return_url,
             'cancelUrl': cancel_url,
             'requestEnvelope': {'errorLanguage': 'en_US'}, # It appears no other languages are supported
         }
-
+        
         if not secondary_receiver:
             # simple payment
-            data['receiverList'] = {'receiver': [{'email': settings.PAYPAL_EMAIL, 
-                                                  'amount': unicode(amount.amount)}]}
+            data['receiverList'] = {'receiver': [{'email': seller_paypal_email, 
+#                                                   'amount': unicode(amount.amount)}]}
+                                                    'amount': amount}]}
         else:
+            #### CUSTOM SECONDARY RECEIVER
+            commission = (float(amount) * float(0.94))
+            his = (float(amount) - float(commission))
+            #### CUSTOM ENDS
+            
             # chained TODO: don't hardcode this
-            commission = 16 % amount
-            data['receiverList'] = {'receiver': [{'email': settings.PAYPAL_EMAIL, 
-                                                  'amount': unicode(amount.amount), 
+            # commission = 16 % amount
+            data['receiverList'] = {'receiver': [{'email': seller_paypal_email, 
+                                                  # 'amount': unicode(amount.amount),
+                                                  # 'amount': amount, 
+                                                  'amount': float(amount),
                                                   'primary': 'true'}, 
                                                  {'email': secondary_receiver, 
-                                                  'amount': unicode((amount - commission).amount),
+                                                  # 'amount': unicode((amount - commission)),
+                                                  'amount': float(his),
                                                   'primary': 'false'}]}
 
         if ipn_url:
@@ -224,6 +238,42 @@ class Refund(object):
             
             raise RefundError(error_message)
 
+class CancelPreapproval(object):
+    '''
+    Models the Cancel Preapproval API operation
+    
+    Currently only a full refund is supported.
+    '''
+    def __init__(self, preapproval_key):
+        
+        if not preapproval_key:
+            raise ValueError("must provide a preapprovalKey")
+        
+        headers = _build_headers()
+        data = {
+            'preapprovalKey': preapproval_key,
+            'requestEnvelope': {'errorLanguage': 'en_US'}, # It appears no other languages are supported
+        }
+
+        self.raw_request = json.dumps(data)
+        self.raw_response = url_request('%s%s' % (settings.PAYPAL_ENDPOINT, 'CancelPreapproval'),
+                                        data=self.raw_request, headers=headers).content
+        self.response = json.loads(self.raw_response)
+
+        logger.debug('headers are: %s' % headers)
+        logger.debug('request is: %s' % data)
+        logger.debug('response is: %s' % self.raw_response)
+
+        if 'responseEnvelope' not in self.response or 'ack' not in self.response['responseEnvelope'] \
+            or self.response['responseEnvelope']['ack'] not in ['Success', 'SuccessWithWarning']:
+
+            error_message = 'unknown'
+            try:
+                error_message = self.response['error'][0]['message']
+            except Exception:
+                pass
+            
+            raise CancelPreapprovalError(error_message)
 
 class Preapprove(object):
     '''
@@ -231,31 +281,31 @@ class Preapprove(object):
     
     Currently only a single payment with a simple date range is supported
     '''
+    # project_id added
     def __init__(self, amount, return_url, cancel_url, remote_address, ipn_url=None,
-                 starting_date=datetime.utcnow(), ending_date=(datetime.utcnow() + timedelta(days=90))):
-        
-        if not amount or not isinstance(amount, Money) or amount <= Money('0.00', amount.currency):
-            raise ValueError("amount must be a positive instance of Money")
+                 starting_date=datetime.utcnow(), ending_date=(datetime.utcnow() + timedelta(days=90)), project_id=None, currency_code=None):
         
         self._amount = amount
         
         headers = _build_headers(remote_address)
         data = {
-            'currencyCode': amount.currency.code,
+#             'currencyCode': amount.currency.code,
+            'currencyCode': currency_code,
             'returnUrl': return_url,
             'cancelUrl': cancel_url,
-            'startingDate': starting_date,
-            'endingDate': ending_date,
+            'startingDate': starting_date.isoformat(),
+            'endingDate': ending_date.isoformat(),
             'maxNumberOfPayments': 1,
             'maxNumberOfPaymentsPerPeriod': 1,
-            'maxTotalAmountOfAllPayments': unicode(amount.amount),
+            'maxTotalAmountOfAllPayments': int(amount),
             'pinType': 'NOT_REQUIRED',
+            'project': int(project_id),
             'requestEnvelope': {'errorLanguage': 'en_US'}, # It appears no other languages are supported
         }
 
         if ipn_url:
             data['ipnNotificationUrl'] = ipn_url
- 
+        
         self.raw_request = json.dumps(data)
         self.raw_response = url_request('%s%s' % (settings.PAYPAL_ENDPOINT, 'Preapproval'),
                                         data=self.raw_request, headers=headers).content
@@ -406,7 +456,8 @@ class IPN(object):
             money_args = str(money_str).split(' ', 1)
             money_args.reverse()
             if money_args and len(money_args) == 2:
-                return Money(*money_args)
+#                 return Money(*money_args)
+                return money_args
         
         return None
 
