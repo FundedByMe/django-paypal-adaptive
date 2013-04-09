@@ -271,14 +271,14 @@ class Preapproval(PaypalAdaptive):
         return self.status == 'canceled'
         
     @transaction.autocommit
-    def mark_as_used(self, request):
+    def mark_as_used(self):
         self.status = 'used'
         self.save()
         
         return self.status == 'used'
     
-    # custom nesxt URL
     def next_url(self):
+        """Custom next URL"""
         return '%s?cmd=_ap-preapproval&preapprovalkey=%s' \
             % (settings.PAYPAL_PAYMENT_HOST, self.preapproval_key)
             
@@ -286,9 +286,7 @@ class Preapproval(PaypalAdaptive):
         return self.preapproval_key
 
 
-'''
-South support for the custom fields
-'''
+# South support for the custom fields
 add_introspection_rules([], [ 
     "^paypaladaptive\.models\.UUIDField"
 ])
