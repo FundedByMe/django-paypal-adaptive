@@ -162,9 +162,8 @@ class Payment(PaypalAdaptive):
 
 
 class Refund(PaypalAdaptive):
-    '''
-    Models a refund make using Paypal
-    '''
+    """Models a refund make using Paypal"""
+
     STATUS_CHOICES = (
         ('new', _(u'New')), 
         ('created', _(u'Created')), 
@@ -175,15 +174,19 @@ class Refund(PaypalAdaptive):
     )
 
     payment = models.OneToOneField(Payment)
-    status = models.CharField(_(u'status'), max_length=10, choices=STATUS_CHOICES, default='new')
+    status = models.CharField(_(u'status'), max_length=10,
+                              choices=STATUS_CHOICES, default='new')
     status_detail = models.CharField(_(u'detailed status'), max_length=2048)
     
     # TODO: finish model
     
 class Preapproval(PaypalAdaptive):
-    '''
-    Models a preapproval made using Paypal 
-    '''
+    """Models a preapproval made using Paypal"""
+
+    default_valid_range = timedelta(days=90)
+    default_valid_date = lambda: (datetime.now() +
+                                  Preapproval.default_valid_range)
+
     STATUS_CHOICES = (
         ('new', _(u'New')), 
         ('created', _(u'Created')), 
@@ -195,30 +198,53 @@ class Preapproval(PaypalAdaptive):
     )
     
     purchaser = models.ForeignKey(User, related_name='preapprovals_made')
-    valid_until_date = models.DateTimeField(_(u'valid until'), default=lambda: datetime.now() + timedelta(days=90))
+    valid_until_date = models.DateTimeField(_(u'valid until'),
+                                            default=default_valid_date)
     preapproval_key = models.CharField(_(u'preapprovalkey'), max_length=255)
-    status = models.CharField(_(u'status'), max_length=10, choices=STATUS_CHOICES, default='new')
+    status = models.CharField(_(u'status'), max_length=10,
+                              choices=STATUS_CHOICES, default='new')
     status_detail = models.CharField(_(u'detailed status'), max_length=2048)
 
+    @property
+    def ipn_url(self):
+        current_site = Site.objects.get_current()
+        kwargs = {'id': self.id,
+                  'secret_uuid': self.secret_uuid}
+        ipn_url = reverse('paypal-adaptive-ipn', kwargs=kwargs)
+        return "http://%s%s" % (current_site, ipn_url)
+
+    @property
+    def return_url(self):
+        current_site = Site.objects.get_current()
+        kwargs = {'id': self.id, 'secret_uuid': self.secret_uuid}
+        return_url = reverse('paypal-adaptive-preapproval-return',
+                             kwargs=kwargs)
+        return "http://%s%s" % (current_site, return_url)
+
+    @property
+    def cancel_url(self):
+        current_site = Site.objects.get_current()
+        kwargs = {'id': self.id}
+        cancel_url = reverse('paypal-adaptive-preapproval-cancel',
+                             kwargs=kwargs)
+        return "http://%s%s" % (current_site, cancel_url)
+
     @transaction.autocommit
-    def process(self, request, **kwargs):
+    def process(self, remote_addr, ending_date, project_id, currency_code):
+        """Process the preapproval"""
+
         self.save()
         
-        ipn_url = None
-        if settings.USE_IPN:
-            ipn_url = request.build_absolute_uri(reverse('paypal-adaptive-ipn',
-                                                         kwargs={'id': self.id, 
-                                                                 'secret_uuid': self.secret_uuid}))
-
-        return_url = request.build_absolute_uri(reverse('paypal-adaptive-preapproval-return', 
-                                                         kwargs={'id': self.id,
-                                                                 'secret_uuid': self.secret_uuid}))
-        cancel_url = request.build_absolute_uri(reverse('paypal-adaptive-preapproval-cancel', 
-                                                         kwargs={'id': self.id}))
+        ipn_url = self.ipn_url if settings.USE_IPN else None
+        return_url = self.return_url
+        cancel_url = self.cancel_url
                      
-        preapprove = api.Preapprove(self.amount, return_url, cancel_url, request.META['REMOTE_ADDR'], 
-                                    ipn_url=ipn_url, starting_date=self.created_date, ending_date=kwargs['ending_date'], 
-                                    project_id=kwargs['project_id'], currency_code=kwargs['currency_code'])
+        preapprove = api.Preapprove(self.amount, return_url, cancel_url,
+                                    remote_addr,  ipn_url=ipn_url,
+                                    starting_date=self.created_date,
+                                    ending_date=ending_date,
+                                    project_id=project_id,
+                                    currency_code=currency_code)
     
         self.debug_request = preapprove.raw_request
         self.debug_response = preapprove.raw_response
