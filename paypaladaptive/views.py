@@ -22,12 +22,7 @@ import api
 import logging
 import settings
 from django.utils.translation import ugettext_lazy as _
-from django.utils import simplejson as json
-
-# TODO: Remove fundedbyme-specific code
-from facepy import GraphAPI
-from fundedbyme.project.tasks import add_funds_to_project, add_backer_to_project, send_timeline_update, send_twitter_update
-from social_auth.models import UserSocialAuth
+from signals import received_preapproval
 
 logger = logging.getLogger(__name__)
 
@@ -157,23 +152,11 @@ def preapproval_return(request, preapproval_id, secret_uuid,
         preapproval.status = 'returned'
         preapproval.save()
 
-        # TODO: this code should live in the fundedbyme project:
-        json_object = json.loads(preapproval.debug_request)
-        for majorkey, subdict in json_object.iteritems():
-            if majorkey == "project":
-                kwargs = {'amount':preapproval.amount,}
-                add_funds_to_project.delay(subdict, preapproval.id)
-                add_backer_to_project.delay(subdict, request.user.username, preapproval.created_date, **kwargs)
-                social_auth = UserSocialAuth.objects.filter(user=request.user)
-                for obj in social_auth:
-                    if obj.provider == 'facebook':
-                        send_timeline_update.delay(obj.extra_data['access_token'], subdict)
-                    # if obj.provider == 'twitter':
-                    #     send_twitter_update.delay(subdict)
-        
     if not settings.USE_IPN:
         # TODO: make PaymentDetails call here if not using IPN
         pass
+
+    received_preapproval.send_robust(sender=None, preapproval=preapproval)
 
     context = RequestContext(request)
     template_vars = {"is_embedded": settings.USE_EMBEDDED,
