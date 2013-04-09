@@ -1,3 +1,4 @@
-Django>=1.2
-South>=0.7.3
-python-money>=0.5.0
+Django==1.5.1
+South==0.7.6
+python-money==0.5
+wsgiref==0.1.2
