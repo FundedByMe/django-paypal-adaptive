@@ -134,18 +134,19 @@ class Payment(PaypalAdaptive):
         return self.status == 'created'
 
     @transaction.autocommit
-    def refund(self, request):
+    def refund(self):
         self.save()
         
         if self.status != 'completed':
             raise ValueError('Cannot refund a Payment until it is completed.')
         
-        ref = api.Refund(self.pay_key)
+        refund_call = api.Refund(self.pay_key)
 
         self.status = 'refunded'
         self.save()
     
-        refund = Refund(payment=self, debug_request=ref.raw_request, debug_response=ref.raw_response)
+        refund = Refund(payment=self, debug_request=refund_call.raw_request,
+                        debug_response=refund_call.raw_response)
         refund.save()
 
     def next_url(self):
