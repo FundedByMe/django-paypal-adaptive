@@ -22,15 +22,13 @@ else:
 
     PAYPAL_APPLICATION_ID = settings.PAYPAL_APPLICATION_ID
 
-# These settins are required
+# These settings are required
 PAYPAL_USERID = settings.PAYPAL_USERID
 PAYPAL_PASSWORD = settings.PAYPAL_PASSWORD
 PAYPAL_SIGNATURE = settings.PAYPAL_SIGNATURE
 PAYPAL_EMAIL = settings.PAYPAL_EMAIL
 
-# USE_CHAIN = getattr(settings, 'PAYPAL_USE_CHAIN', False)
-# USE_IPN = getattr(settings, 'PAYPAL_USE_IPN', True)
-USE_CHAIN = True
-USE_IPN = True
-USE_EMBEDDED = False
+USE_CHAIN = getattr(settings, 'PAYPAL_USE_CHAIN', False)
+USE_IPN = getattr(settings, 'PAYPAL_USE_IPN', True)
+USE_EMBEDDED = getattr(settings, 'PAYPAL_USE_EMBEDDED', True)
 SHIPPING = getattr(settings, 'PAYPAL_USE_SHIPPING', False)
