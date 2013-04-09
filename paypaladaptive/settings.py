@@ -6,7 +6,7 @@ Created on Jun 13, 2011
 from django.conf import settings
 
 
-DEBUG = getattr(settings, "DEBUG", True)
+DEBUG = getattr(settings, "DEBUG", False)
 
 if DEBUG:
     # use sandboxes while in debug mode
