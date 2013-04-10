@@ -8,7 +8,7 @@ from errors import *
 from dateutil.parser import parse
 from django.utils import simplejson as json
 from pytz import utc
-import settings
+from paypaladaptive import settings
 from money import Money, Currency
 from urllib2 import URLError
 import urllib2

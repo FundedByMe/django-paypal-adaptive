@@ -1,5 +1,8 @@
 Django==1.5.1
-South==0.7.6
+factory-boy==1.3.0
+mock==1.0.1
+python-dateutil==2.1
 python-money==0.5
 pytz==2013b
+six==1.3.0
 wsgiref==0.1.2

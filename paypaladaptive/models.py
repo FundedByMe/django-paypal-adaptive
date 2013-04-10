@@ -8,6 +8,9 @@ from south.modelsinspector import add_introspection_rules
 import api
 import settings
 from django.contrib.sites.models import Site
+from django.utils import simplejson as json
+import money
+
 
 try:
     import uuid
@@ -34,15 +37,45 @@ class UUIDField(models.CharField) :
         return value
 
 
+class MoneyField(models.CharField):
+    description = "Represent Money"
+
+    def __init__(self, *args, **kwargs):
+        kwargs['max_length'] = 255
+        super(MoneyField, self).__init__(*args, **kwargs)
+
+    def to_python(self, value):
+        return money.Money().from_string(value)
+
+    def get_prep_value(self, value):
+        return str(value)
+
+
 class PaypalAdaptive(models.Model):
     """Base fields used by all PaypalAdaptive models"""
 
-    amount = models.DecimalField(_(u'amount'), max_digits=6, decimal_places=2)
+    money = MoneyField()
     created_date = models.DateTimeField(_(u'created on'), auto_now_add=True)
     secret_uuid = UUIDField(_(u'secret UUID')) # to verify return_url
     debug_request = models.TextField(_(u'raw request'), blank=True, null=True)
     debug_response = models.TextField(_(u'raw response'), blank=True,
                                       null=True)
+
+    def get_amount(self):
+        return self.money.amount
+
+    def set_amount(self, value):
+        self.money.amount = value
+
+    amount = property(get_amount, set_amount)
+
+    def get_currency(self):
+        return self.money.currency
+
+    def set_currency(self, value):
+        self.money.currency = value
+
+    currency = property(get_currency, set_currency)
     
     class Meta:
         abstract = True
@@ -111,22 +144,24 @@ class Payment(PaypalAdaptive):
         # CHECK IF A PREAPPROVAL EXISTS
         if preapproval_key:
             try:
-                pay = api.Pay(self.amount, return_url, cancel_url, remote_addr,
-                              seller_paypal_email, ipn_url, preapproval_key,
-                              secondary_receiver)
+                endpoint = api.Pay(self.amount, return_url, cancel_url,
+                                   remote_addr, seller_paypal_email, ipn_url,
+                                   preapproval_key, secondary_receiver)
             except:
-                pay = api.Pay(self.amount, return_url, cancel_url,
-                              current_site, seller_paypal_email, ipn_url,
-                              preapproval_key, secondary_receiver)
+                endpoint = api.Pay(self.amount, return_url, cancel_url,
+                                   current_site, seller_paypal_email, ipn_url,
+                                   preapproval_key, secondary_receiver)
         else:
-            pay = api.Pay(self.amount, return_url, cancel_url, remote_addr,
-                          seller_paypal_email, ipn_url)
-    
-        self.debug_request = pay.raw_request
-        self.debug_response = pay.raw_response
-        self.pay_key = pay.paykey
+            endpoint = api.Pay(self.amount, return_url, cancel_url,
+                               remote_addr, seller_paypal_email, ipn_url)
+
+        endpoint.call()
+
+        self.debug_request = json.dumps(endpoint.data)
+        self.debug_response = endpoint.raw_response
+        self.pay_key = endpoint.paykey
         
-        if pay.paykey:
+        if endpoint.paykey:
             self.status = 'created'
         else:
             self.status = 'error'
@@ -154,8 +189,8 @@ class Payment(PaypalAdaptive):
         refund.save()
 
     def next_url(self):
-        return '%s?cmd=_ap-payment&paykey=%s' \
-            % (settings.PAYPAL_PAYMENT_HOST, self.pay_key)
+        return ('%s?cmd=_ap-payment&paykey=%s'
+                % (settings.PAYPAL_PAYMENT_HOST, self.pay_key))
             
     def __unicode__(self):
         return self.pay_key
@@ -287,6 +322,5 @@ class Preapproval(PaypalAdaptive):
 
 
 # South support for the custom fields
-add_introspection_rules([], [ 
-    "^paypaladaptive\.models\.UUIDField"
-])
+add_introspection_rules([], ["^paypaladaptive\.models\.UUIDField"])
+add_introspection_rules([], ["^paypaladaptive\.models\.MoneyField"])
