@@ -46,6 +46,8 @@ class UrlRequest(object):
 
 
 class PaypalAdaptiveEndpoint(object):
+    """Base class for all Paypal endpoints"""
+
     headers = {}
     data = {'requestEnvelope': {'errorLanguage': 'en_US'}, }
     raw_response = None
