@@ -307,6 +307,11 @@ class Preapproval(PaypalAdaptive):
         return self.preapproval_key
 
 
-# South support for the custom fields
-add_introspection_rules([], ["^paypaladaptive\.models\.UUIDField"])
-add_introspection_rules([], ["^paypaladaptive\.models\.MoneyField"])
+try:
+    from south.modelsinspector import add_introspection_rules
+    # South support for the custom fields
+    add_introspection_rules([], ["^paypaladaptive\.models\.UUIDField"])
+    add_introspection_rules([], ["^paypaladaptive\.models\.MoneyField"])
+except ImportError:
+    # South is not installed
+    pass
