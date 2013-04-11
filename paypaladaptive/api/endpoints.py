@@ -205,20 +205,21 @@ class Preapprove(PaypalAdaptiveEndpoint):
     url = '%s%s' % (settings.PAYPAL_ENDPOINT, 'Preapproval')
     error_class = PreapproveError
 
-    def prepare_data(self, amount, return_url, cancel_url, remote_address,
+    def prepare_data(self, money, return_url, cancel_url, remote_address,
                      ipn_url=None, starting_date=datetime.utcnow(),
                      ending_date=(datetime.utcnow() + timedelta(days=90)),
-                     currency_code=None):
+                     pin_type='NOT_REQUIRED', max_payments=1,
+                     max_payments_per_period=1):
 
-        data = {'currencyCode': amount.currency.code,
+        data = {'currencyCode': money.currency.code,
                 'returnUrl': return_url,
                 'cancelUrl': cancel_url,
                 'startingDate': starting_date.isoformat(),
                 'endingDate': ending_date.isoformat(),
-                'maxNumberOfPayments': 1,
-                'maxNumberOfPaymentsPerPeriod': 1,
-                'maxTotalAmountOfAllPayments': int(amount),
-                'pinType': 'NOT_REQUIRED'}
+                'maxNumberOfPayments': max_payments,
+                'maxNumberOfPaymentsPerPeriod': max_payments_per_period,
+                'maxTotalAmountOfAllPayments': float(money.amount),
+                'pinType': pin_type}
 
         if ipn_url:
             data['ipnNotificationUrl'] = ipn_url
