@@ -9,8 +9,10 @@ class PayError(PaypalAdaptiveApiError):
 class RefundError(PaypalAdaptiveApiError):
     pass
 
+
 class CancelPreapprovalError(PaypalAdaptiveApiError):
     pass
+
 
 class PreapproveError(PaypalAdaptiveApiError):
     pass
