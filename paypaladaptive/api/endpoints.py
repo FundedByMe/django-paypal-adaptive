@@ -56,7 +56,7 @@ class PaypalAdaptiveEndpoint(object):
     url = None
 
     def __init__(self, *args, **kwargs):
-        self._build_headers()
+        self._build_headers(remote_address=kwargs.get('remote_address', None))
         self.data.update(self.prepare_data(*args, **kwargs))
 
     def _build_headers(self, remote_address=None):
