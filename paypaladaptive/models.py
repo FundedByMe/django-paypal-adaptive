@@ -1,13 +1,17 @@
 """Models to support Paypal Adaptive API"""
 from datetime import datetime, timedelta
+
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django.db import models, transaction
 from django.utils.translation import ugettext_lazy as _
 from django.contrib.sites.models import Site
 from django.utils import simplejson as json
-from money.contrib.django.models.fields import MoneyField
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes import generic
+
 import money
+from money.contrib.django.models.fields import MoneyField
 
 import api
 import settings
@@ -40,12 +44,20 @@ class UUIDField(models.CharField) :
 class PaypalAdaptive(models.Model):
     """Base fields used by all PaypalAdaptive models"""
 
-    money = MoneyField()
+    money = MoneyField(_(u'money'), max_digits=6, decimal_places=2)
     created_date = models.DateTimeField(_(u'created on'), auto_now_add=True)
     secret_uuid = UUIDField(_(u'secret UUID')) # to verify return_url
     debug_request = models.TextField(_(u'raw request'), blank=True, null=True)
     debug_response = models.TextField(_(u'raw response'), blank=True,
                                       null=True)
+
+    def call(self, endpoint_class, *args, **kwargs):
+        endpoint = endpoint_class(*args, **kwargs)
+        self.debug_request = json.dumps(endpoint.data)
+        self.save()
+        res = endpoint.call()
+        self.debug_response = endpoint.raw_response
+        return (res, endpoint)
 
     def get_amount(self):
         return self.money.amount
@@ -79,10 +91,17 @@ class Payment(PaypalAdaptive):
         ('completed', _(u'Completed')),
         ('refunded', _(u'Refunded')),
     )
-    
-    purchaser = models.ForeignKey(User, related_name='payments_made')
-    owner = models.ForeignKey(User, blank=True, null=True,
-                              related_name='payments_received')
+
+
+    sender_id = models.PositiveIntegerField()
+    sender_type = models.ForeignKey(ContentType, related_name='payments_sent')
+    sender = generic.GenericForeignKey('sender_type', 'sender_id')
+
+    receiver_id = models.PositiveIntegerField()
+    receiver_type = models.ForeignKey(ContentType,
+                                      related_name='payments_received')
+    receiver = generic.GenericForeignKey('receiver_type', 'receiver_id')
+
     pay_key = models.CharField(_(u'paykey'), max_length=255)
     transaction_id = models.CharField(_(u'paypal transaction ID'),
                                       max_length=128, blank=True, null=True)
@@ -111,43 +130,39 @@ class Payment(PaypalAdaptive):
         cancel_url = reverse('paypal-adaptive-payment-cancel', kwargs=kwargs)
         return "http://%s%s" % (current_site, cancel_url)
 
+    def get_receiver_email(self):
+        return self.receiver.email
+
     @transaction.autocommit
-    def process(self, remote_addr=None, preapproval_key=None,
-                secondary_receiver=None, seller_email=None):
+    def process(self, preapproval_key=None, secondary_receiver=None, **kwargs):
         """Process the payment"""
 
-        self.save()
+        endpoint_kwargs = {'money': self.money,
+                           'return_url': self.return_url,
+                           'cancel_url': self.cancel_url}
 
-        ipn_url = self.ipn_url if settings.USE_IPN else None
-        seller_paypal_email = None
-        return_url = self.return_url
-        cancel_url = self.cancel_url
-        current_site = Site.objects.get_current()
+        # Add IPN url
+        if settings.USE_IPN:
+            endpoint_kwargs.update({'ipn_url': self.ipn_url})
 
-        if settings.USE_CHAIN and seller_email:
-            seller_paypal_email = seller_email
+        # Add receiver email
+        if settings.USE_CHAIN:
+            email = self.get_receiver_email()
+            endpoint_kwargs.update({'seller_paypal_email': email})
 
-        # CHECK IF A PREAPPROVAL EXISTS
+        # Add preapproval key
         if preapproval_key:
-            try:
-                endpoint = api.Pay(self.amount, return_url, cancel_url,
-                                   remote_addr, seller_paypal_email, ipn_url,
-                                   preapproval_key, secondary_receiver)
-            except:
-                endpoint = api.Pay(self.amount, return_url, cancel_url,
-                                   current_site, seller_paypal_email, ipn_url,
-                                   preapproval_key, secondary_receiver)
-        else:
-            endpoint = api.Pay(self.amount, return_url, cancel_url,
-                               remote_addr, seller_paypal_email, ipn_url)
+            endpoint_kwargs.update({'preapprovalKey': preapproval_key})
 
-        endpoint.call()
+        # Add secondary receiver TODO: add amount for secondary receiver
+        if secondary_receiver:
+            endpoint_kwargs.update({'secondary_receiver': secondary_receiver})
 
-        self.debug_request = json.dumps(endpoint.data)
-        self.debug_response = endpoint.raw_response
-        self.pay_key = endpoint.paykey
-        
+        # Call endpoint
+        res, endpoint = self.call(api.Pay, **endpoint_kwargs)
+
         if endpoint.paykey:
+            self.pay_key = endpoint.paykey
             self.status = 'created'
         else:
             self.status = 'error'
@@ -160,17 +175,20 @@ class Payment(PaypalAdaptive):
     def refund(self):
         """Refund this payment"""
 
+        # TODO: flow should create a Refund object and call Refund.process()
+
         self.save()
         
         if self.status != 'completed':
             raise ValueError('Cannot refund a Payment until it is completed.')
-        
-        refund_call = api.Refund(self.pay_key)
+
+        res, refund_call = self.call(api.Refund, self.pay_key)
 
         self.status = 'refunded'
         self.save()
     
-        refund = Refund(payment=self, debug_request=refund_call.raw_request,
+        refund = Refund(payment=self,
+                        debug_request=json.dumps(refund_call.data),
                         debug_response=refund_call.raw_response)
         refund.save()
 
@@ -218,7 +236,16 @@ class Preapproval(PaypalAdaptive):
         ('used', _(u'Used')),
     )
     
-    purchaser = models.ForeignKey(User, related_name='preapprovals_made')
+    sender_id = models.PositiveIntegerField()
+    sender_type = models.ForeignKey(ContentType,
+                                    related_name='preapprovals_sent')
+    sender = generic.GenericForeignKey('sender_type', 'sender_id')
+
+    receiver_id = models.PositiveIntegerField()
+    receiver_type = models.ForeignKey(ContentType,
+                                    related_name='preapprovals_received')
+    receiver = generic.GenericForeignKey('receiver_type', 'receiver_id')
+
     valid_until_date = models.DateTimeField(_(u'valid until'),
                                             default=default_valid_date)
     preapproval_key = models.CharField(_(u'preapprovalkey'), max_length=255)
@@ -251,27 +278,38 @@ class Preapproval(PaypalAdaptive):
         return "http://%s%s" % (current_site, cancel_url)
 
     @transaction.autocommit
-    def process(self, remote_addr, ending_date, project_id, currency_code):
-        """Process the preapproval"""
+    def process(self, **kwargs):
+        """Process the preapproval
+        >>>from paypaladaptive.models import Preapproval
+        >>>p = Preapproval()
+        >>>from money import Money
+        >>>p.money = Money(2000, 'sek')
+        >>>from django.contrib.auth.models import User
+        >>>sender = User.objects.get(username='appel')
+        >>>receiver = User.objects.get(username='antonagestam')
+        >>>p.sender = sender
+        >>>p.receiver = receiver
+        >>>p.save()
+        >>>extra = {'requireInstantFundingSource': 'TRUE', 'displayMaxTotalAmount': 'TRUE'}
+        >>>p.process(**extra)
+        """
 
-        self.save()
-        
-        ipn_url = self.ipn_url if settings.USE_IPN else None
-        return_url = self.return_url
-        cancel_url = self.cancel_url
+        endpoint_kwargs = {'money': self.money,
+                           'return_url': self.return_url,
+                           'cancel_url': self.cancel_url,
+                           'starting_date': self.created_date,
+                           'ending_date': self.valid_until_date}
+
+        if kwargs:
+            endpoint_kwargs.update(**kwargs)
+
+        if settings.USE_IPN:
+            endpoint_kwargs.update({'ipn_url': self.ipn_url})
                      
-        preapprove = api.Preapprove(self.amount, return_url, cancel_url,
-                                    remote_addr,  ipn_url=ipn_url,
-                                    starting_date=self.created_date,
-                                    ending_date=ending_date,
-                                    project_id=project_id,
-                                    currency_code=currency_code)
+        res, preapprove = self.call(api.Preapprove, **endpoint_kwargs)
     
-        self.debug_request = preapprove.raw_request
-        self.debug_response = preapprove.raw_response
-        self.preapproval_key = preapprove.preapprovalkey
-        
         if preapprove.preapprovalkey:
+            self.preapproval_key = preapprove.preapprovalkey
             self.status = 'created'
         else:
             self.status = 'error'
@@ -282,11 +320,11 @@ class Preapproval(PaypalAdaptive):
         
     @transaction.autocommit
     def cancel_preapproval(self):
-        cancel = api.CancelPreapproval(preapproval_key=self.preapproval_key)
-    
-        self.debug_request = cancel.raw_request
-        self.debug_response = cancel.raw_response
-        
+        res, cancel = self.call(api.CancelPreapproval,
+                                preapproval_key=self.preapproval_key)
+
+        # TODO: validate response
+
         self.status = 'canceled'
         self.save()
         return self.status == 'canceled'
@@ -300,8 +338,8 @@ class Preapproval(PaypalAdaptive):
     
     def next_url(self):
         """Custom next URL"""
-        return '%s?cmd=_ap-preapproval&preapprovalkey=%s' \
-            % (settings.PAYPAL_PAYMENT_HOST, self.preapproval_key)
+        return ('%s?cmd=_ap-preapproval&preapprovalkey=%s'
+                % (settings.PAYPAL_PAYMENT_HOST, self.preapproval_key))
             
     def __unicode__(self):
         return self.preapproval_key
