@@ -6,3 +6,4 @@ include
 lib
 *.pyc
 .idea
+paypaladaptive/migrations/
