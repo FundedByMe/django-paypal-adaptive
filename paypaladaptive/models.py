@@ -4,13 +4,13 @@ from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django.db import models, transaction
 from django.utils.translation import ugettext_lazy as _
-from south.modelsinspector import add_introspection_rules
-import api
-import settings
 from django.contrib.sites.models import Site
 from django.utils import simplejson as json
+from money.contrib.django.models.fields import MoneyField
 import money
 
+import api
+import settings
 
 try:
     import uuid
@@ -35,20 +35,6 @@ class UUIDField(models.CharField) :
             value = super(models.CharField, self).pre_save(model_instance, add)
 
         return value
-
-
-class MoneyField(models.CharField):
-    description = "Represent Money"
-
-    def __init__(self, *args, **kwargs):
-        kwargs['max_length'] = 255
-        super(MoneyField, self).__init__(*args, **kwargs)
-
-    def to_python(self, value):
-        return money.Money().from_string(value)
-
-    def get_prep_value(self, value):
-        return str(value)
 
 
 class PaypalAdaptive(models.Model):
