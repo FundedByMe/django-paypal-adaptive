@@ -92,16 +92,6 @@ class Payment(PaypalAdaptive):
         ('refunded', _(u'Refunded')),
     )
 
-
-    sender_id = models.PositiveIntegerField()
-    sender_type = models.ForeignKey(ContentType, related_name='payments_sent')
-    sender = generic.GenericForeignKey('sender_type', 'sender_id')
-
-    receiver_id = models.PositiveIntegerField()
-    receiver_type = models.ForeignKey(ContentType,
-                                      related_name='payments_received')
-    receiver = generic.GenericForeignKey('receiver_type', 'receiver_id')
-
     pay_key = models.CharField(_(u'paykey'), max_length=255)
     transaction_id = models.CharField(_(u'paypal transaction ID'),
                                       max_length=128, blank=True, null=True)
@@ -236,16 +226,6 @@ class Preapproval(PaypalAdaptive):
         ('used', _(u'Used')),
     )
     
-    sender_id = models.PositiveIntegerField()
-    sender_type = models.ForeignKey(ContentType,
-                                    related_name='preapprovals_sent')
-    sender = generic.GenericForeignKey('sender_type', 'sender_id')
-
-    receiver_id = models.PositiveIntegerField()
-    receiver_type = models.ForeignKey(ContentType,
-                                    related_name='preapprovals_received')
-    receiver = generic.GenericForeignKey('receiver_type', 'receiver_id')
-
     valid_until_date = models.DateTimeField(_(u'valid until'),
                                             default=default_valid_date)
     preapproval_key = models.CharField(_(u'preapprovalkey'), max_length=255)
