@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 
 from setuptools import setup, find_packages
-
-import paypal
+import paypaladaptive
 
 setup(
     name='django-paypal-adaptive',
