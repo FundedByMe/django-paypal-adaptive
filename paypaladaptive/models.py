@@ -285,7 +285,12 @@ class Preapproval(PaypalAdaptive):
 
         if settings.USE_IPN:
             endpoint_kwargs.update({'ipn_url': self.ipn_url})
-                     
+
+        if kwargs['next']:
+            return_next = "%s?next=%s" % (endpoint_kwargs['return_url'],
+                                   kwargs['next'])
+            endpoint_kwargs.update({'return_url': return_next})
+
         res, preapprove = self.call(api.Preapprove, **endpoint_kwargs)
     
         if preapprove.preapprovalkey:
