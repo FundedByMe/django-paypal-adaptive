@@ -270,7 +270,7 @@ class Preapproval(PaypalAdaptive):
         >>>p.sender = sender
         >>>p.receiver = receiver
         >>>p.save()
-        >>>extra = {'requireInstantFundingSource': 'TRUE', 'displayMaxTotalAmount': 'TRUE'}
+        >>>extra = {'requireInstantFundingSource': 'TRUE', 'displayMaxTotalAmount': 'TRUE', 'next': '123'}
         >>>p.process(**extra)
         """
 
