@@ -110,21 +110,21 @@ class Payment(PaypalAdaptive):
     @property
     def ipn_url(self):
         current_site = Site.objects.get_current()
-        kwargs = {'id': self.id, 'secret_uuid': self.secret_uuid}
+        kwargs = {'payment_id': self.id, 'secret_uuid': self.secret_uuid}
         ipn_url = reverse('paypal-adaptive-ipn', kwargs=kwargs)
         return "http://%s%s" % (current_site, ipn_url)
 
     @property
     def return_url(self):
         current_site = Site.objects.get_current()
-        kwargs = {'id': self.id, 'secret_uuid': self.secret_uuid}
+        kwargs = {'payment_id': self.id, 'secret_uuid': self.secret_uuid}
         return_url = reverse('paypal-adaptive-payment-return', kwargs=kwargs)
         return "http://%s%s" % (current_site, return_url)
 
     @property
     def cancel_url(self):
         current_site = Site.objects.get_current()
-        kwargs = {'id': self.id}
+        kwargs = {'payment_id': self.id}
         cancel_url = reverse('paypal-adaptive-payment-cancel', kwargs=kwargs)
         return "http://%s%s" % (current_site, cancel_url)
 
@@ -153,8 +153,8 @@ class Payment(PaypalAdaptive):
             endpoint_kwargs.update({'return_url': return_next})
 
         # Add IPN url
-        if settings.USE_IPN:
-            endpoint_kwargs.update({'ipn_url': self.ipn_url})
+        # if settings.USE_IPN:
+        #     endpoint_kwargs.update({'ipn_url': self.ipn_url})
 
         # Validate type of receivers and check ReceiverList has primary,
         # otherwise assign first
@@ -265,7 +265,7 @@ class Preapproval(PaypalAdaptive):
     @property
     def ipn_url(self):
         current_site = Site.objects.get_current()
-        kwargs = {'id': self.id,
+        kwargs = {'payment_id': self.id,
                   'secret_uuid': self.secret_uuid}
         ipn_url = reverse('paypal-adaptive-ipn', kwargs=kwargs)
         return "http://%s%s" % (current_site, ipn_url)
@@ -273,7 +273,7 @@ class Preapproval(PaypalAdaptive):
     @property
     def return_url(self):
         current_site = Site.objects.get_current()
-        kwargs = {'id': self.id, 'secret_uuid': self.secret_uuid}
+        kwargs = {'preapproval_id': self.id, 'secret_uuid': self.secret_uuid}
         return_url = reverse('paypal-adaptive-preapproval-return',
                              kwargs=kwargs)
         return "http://%s%s" % (current_site, return_url)
@@ -281,7 +281,7 @@ class Preapproval(PaypalAdaptive):
     @property
     def cancel_url(self):
         current_site = Site.objects.get_current()
-        kwargs = {'id': self.id}
+        kwargs = {'preapproval_id': self.id}
         cancel_url = reverse('paypal-adaptive-preapproval-cancel',
                              kwargs=kwargs)
         return "http://%s%s" % (current_site, cancel_url)
@@ -316,8 +316,8 @@ class Preapproval(PaypalAdaptive):
         if kwargs:
             endpoint_kwargs.update(**kwargs)
 
-        if settings.USE_IPN:
-            endpoint_kwargs.update({'ipn_url': self.ipn_url})
+        # if settings.USE_IPN:
+        #     endpoint_kwargs.update({'ipn_url': self.ipn_url})
 
         res, preapprove = self.call(api.Preapprove, **endpoint_kwargs)
     
