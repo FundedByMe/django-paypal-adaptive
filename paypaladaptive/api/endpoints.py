@@ -2,16 +2,13 @@
 
 from datetime import datetime, timedelta
 import logging
-import urllib
-from ipn_constants import *
 from errors import *
-from dateutil.parser import parse
 from django.utils import simplejson as json
-from pytz import utc
 from paypaladaptive import settings
 from money import Money, Currency
 from urllib2 import URLError
 import urllib2
+from datatypes import Receiver, ReceiverList
 
 logger = logging.getLogger(__name__)
 
@@ -84,10 +81,9 @@ class PaypalAdaptiveEndpoint(object):
         logger.debug('response is: %s' % str(self.raw_response))
 
         if ('responseEnvelope' not in self.response
-            or 'ack' not in self.response['responseEnvelope']
-            or self.response['responseEnvelope']['ack']
-            not in ['Success','SuccessWithWarning']):
-
+                or 'ack' not in self.response['responseEnvelope']
+                or self.response['responseEnvelope']['ack']
+                not in ['Success','SuccessWithWarning']):
             error_message = 'unknown'
             try:
                 error_message = self.response['error'][0]['message']
@@ -105,42 +101,29 @@ class PaypalAdaptiveEndpoint(object):
         return {}
 
 
-
 class Pay(PaypalAdaptiveEndpoint):
     """Models the Pay API operation"""
 
     url = '%s%s' % (settings.PAYPAL_ENDPOINT, 'Pay')
     error_class = PayError
 
-    def prepare_data(self, money, return_url, cancel_url, seller_paypal_email,
-                     ipn_url=None, secondary_receiver=None,
-                     secondary_receiver_amount=None,
-                     **kwargs):
+    def prepare_data(self, money, return_url, cancel_url, receivers,
+                     ipn_url=None, **kwargs):
         """Prepare data for Pay API call"""
 
         if (not money or not isinstance(money, Money)
-            or money <= Money('0.00', money.currency)):
+                or money <= Money('0.00', money.currency)):
             raise ValueError("amount must be a positive instance of Money")
+
+        if (not isinstance(receivers, ReceiverList) or len(receivers) < 1):
+            raise ValueError("receivers must be an instance of ReceiverList")
         
         data = {'actionType': 'PAY',
                 'currencyCode': money.currency.code,
                 'returnUrl': return_url,
                 'cancelUrl': cancel_url}
         
-        if not secondary_receiver or not secondary_receiver_amount:
-            # simple payment
-            receiverList = {'receiver': [{'email': seller_paypal_email,
-                                          'amount': float(money.amount)}]}
-        else:
-            receiverList = {'receiver':[
-                {'email': seller_paypal_email,
-                 'amount': float(money.amount),
-                 'primary': 'true'},
-                {'email': secondary_receiver,
-                 'amount': float(secondary_receiver_amount),
-                 'primary': 'false'}
-            ]}
-
+        receiverList = {'receiver': receivers.to_dict()}
         data.update({'receiverList': receiverList})
 
         if ipn_url:

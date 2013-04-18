@@ -13,6 +13,8 @@ from django.contrib.contenttypes import generic
 import money
 from money.contrib.django.models.fields import MoneyField
 
+from api.errors import ReceiverError, PaypalAdaptiveApiError
+
 import api
 import settings
 
@@ -53,10 +55,16 @@ class PaypalAdaptive(models.Model):
 
     def call(self, endpoint_class, *args, **kwargs):
         endpoint = endpoint_class(*args, **kwargs)
-        self.debug_request = json.dumps(endpoint.data)
-        self.save()
-        res = endpoint.call()
-        self.debug_response = endpoint.raw_response
+
+        try:
+            res = endpoint.call()
+        except PaypalAdaptiveApiError, e:
+            raise e
+        finally:
+            self.debug_request = json.dumps(endpoint.data)
+            self.debug_response = endpoint.raw_response
+            self.save()
+
         return (res, endpoint)
 
     def get_amount(self):
@@ -120,33 +128,53 @@ class Payment(PaypalAdaptive):
         cancel_url = reverse('paypal-adaptive-payment-cancel', kwargs=kwargs)
         return "http://%s%s" % (current_site, cancel_url)
 
-    def get_receiver_email(self):
-        return self.receiver.email
-
     @transaction.autocommit
-    def process(self, preapproval_key=None, secondary_receiver=None, **kwargs):
-        """Process the payment"""
+    def process(self, receivers, preapproval=None, **kwargs):
+        """Process the payment
+        >>>from paypaladaptive.models import Payment
+        >>>from paypaladaptive.api import ReceiverList, Receiver
+        >>>import money
+        >>>r = Receiver(amount=100, email="msn-facilitator@antonagestam.se", primary=False)
+        >>>entrep = Receiver(amount=1900, email="mrbuyer@antonagestam.se", primary=True)
+        >>>receivers = ReceiverList([r, entrep])
+        >>>p = Payment()
+        >>>p.money=money.Money(2000,'usd')
+        >>>p.save()
+        >>>p.process(receivers, preapproval_key='PA-2MT146200X905683P')
+        """
 
         endpoint_kwargs = {'money': self.money,
                            'return_url': self.return_url,
                            'cancel_url': self.cancel_url}
 
+        # Update return_url with ?next param
+        if 'next' in kwargs:
+            return_next = "%s?next=%s" % (self.return_url, kwargs.pop('next'))
+            endpoint_kwargs.update({'return_url': return_next})
+
         # Add IPN url
         if settings.USE_IPN:
             endpoint_kwargs.update({'ipn_url': self.ipn_url})
 
-        # Add receiver email
-        if settings.USE_CHAIN:
-            email = self.get_receiver_email()
-            endpoint_kwargs.update({'seller_paypal_email': email})
+        # Validate type of receivers and check ReceiverList has primary,
+        # otherwise assign first
+        if not isinstance(receivers, api.ReceiverList):
+            raise ReceiverError("receivers must be an instance of "
+                                "ReceiverList")
+        elif not receivers.has_primary():
+            receivers._receivers[0].primary = True
 
-        # Add preapproval key
-        if preapproval_key:
-            endpoint_kwargs.update({'preapprovalKey': preapproval_key})
+        endpoint_kwargs.update({'receivers': receivers})
 
-        # Add secondary receiver TODO: add amount for secondary receiver
-        if secondary_receiver:
-            endpoint_kwargs.update({'secondary_receiver': secondary_receiver})
+        if preapproval is not None:
+            if not isinstance(preapproval, Preapproval):
+                raise ValueError("preapproval must be an instance of "
+                                 "Preapproval")
+
+            key = preapproval.preapproval_key
+            endpoint_kwargs.update({'preapprovalKey': key})
+
+        endpoint_kwargs.update(kwargs)
 
         # Call endpoint
         res, endpoint = self.call(api.Pay, **endpoint_kwargs)
@@ -208,7 +236,8 @@ class Refund(PaypalAdaptive):
     status_detail = models.CharField(_(u'detailed status'), max_length=2048)
     
     # TODO: finish model
-    
+
+
 class Preapproval(PaypalAdaptive):
     """Models a preapproval made using Paypal"""
 
@@ -263,7 +292,7 @@ class Preapproval(PaypalAdaptive):
         >>>from paypaladaptive.models import Preapproval
         >>>p = Preapproval()
         >>>from money import Money
-        >>>p.money = Money(2000, 'sek')
+        >>>p.money = Money(2000, 'usd')
         >>>from django.contrib.auth.models import User
         >>>sender = User.objects.get(username='appel')
         >>>receiver = User.objects.get(username='antonagestam')
@@ -280,7 +309,7 @@ class Preapproval(PaypalAdaptive):
                            'starting_date': self.created_date,
                            'ending_date': self.valid_until_date}
 
-        if kwargs['next']:
+        if 'next' in kwargs:
             return_next = "%s?next=%s" % (self.return_url, kwargs.pop('next'))
             endpoint_kwargs.update({'return_url': return_next})
 

@@ -20,3 +20,7 @@ class PreapproveError(PaypalAdaptiveApiError):
 
 class IpnError(PaypalAdaptiveApiError):
     pass
+
+
+class ReceiverError(ValueError):
+    pass
