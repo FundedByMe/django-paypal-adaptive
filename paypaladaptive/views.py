@@ -25,13 +25,13 @@ logger = logging.getLogger(__name__)
 
 @login_required
 @transaction.autocommit
-def payment_cancel(request, id, payment_secret_uuid,
+def payment_cancel(request, payment_id, payment_secret_uuid,
                    template="paypaladaptive/cancel.html"):
     """Handle incoming cancellation from paypal"""
 
-    logger.debug( "Cancellation received for Payment %s" % id)
+    logger.debug("Cancellation received for Payment %s" % payment_id)
 
-    payment = get_object_or_404(Payment, id=id,
+    payment = get_object_or_404(Payment, id=payment_id,
                                 secret_uuid=payment_secret_uuid)
     
     if request.user != payment.purchaser:
@@ -48,16 +48,16 @@ def payment_cancel(request, id, payment_secret_uuid,
 
 @login_required
 @transaction.autocommit
-def payment_return(request, id, payment_secret_uuid,
+def payment_return(request, payment_id, payment_secret_uuid,
                    template="paypaladaptive/return.html"):
     """
     Incoming return from paypal process (note this is a return to the site, not
     a returned payment)
     """
 
-    logger.debug("Return received for Payment %s" % id)
+    logger.debug("Return received for Payment %s" % payment_id)
 
-    payment = get_object_or_404(Payment, id=id,
+    payment = get_object_or_404(Payment, id=payment_id,
                                 secret_uuid=payment_secret_uuid)
 
     if request.user != payment.purchaser:
@@ -90,13 +90,13 @@ def payment_return(request, id, payment_secret_uuid,
 
 @login_required
 @transaction.autocommit
-def preapproval_cancel(request, id,
+def preapproval_cancel(request, preapproval_id,
                        template="paypaladaptive/cancel.html"):
     """Incoming preapproval cancellation from paypal"""
 
-    logger.debug("Cancellation received for Preapproval %s" % id)
+    logger.debug("Cancellation received for Preapproval %s" % preapproval_id)
 
-    preapproval = get_object_or_404(Preapproval, id=id)
+    preapproval = get_object_or_404(Preapproval, id=preapproval_id)
 
     if request.user != preapproval.purchaser:
         return HttpResponseForbidden("Unauthorized")
@@ -110,18 +110,20 @@ def preapproval_cancel(request, id,
         
     return render_to_response(template, template_vars, context)
 
+
 @login_required
 @transaction.autocommit
-def preapproval_return(request, id, secret_uuid,
+def preapproval_return(request, preapproval_id, secret_uuid,
                        template="paypaladaptive/return.html"):
     """
     Incoming return from paypal process (note this is a return to the site,
     not a returned payment)
+
     """
 
-    logger.debug("Return received for Payment %s" % id)
+    logger.debug("Return received for Payment %s" % preapproval_id)
 
-    preapproval = get_object_or_404(Preapproval, id=id)
+    preapproval = get_object_or_404(Preapproval, id=preapproval_id)
 
     # if request.user != preapproval.purchaser:
     #     return HttpResponseForbidden("Unauthorized")
