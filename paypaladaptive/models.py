@@ -1,20 +1,13 @@
 """Models to support Paypal Adaptive API"""
 from datetime import datetime, timedelta
-
-from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django.db import models, transaction
 from django.utils.translation import ugettext_lazy as _
 from django.contrib.sites.models import Site
 from django.utils import simplejson as json
-from django.contrib.contenttypes.models import ContentType
-from django.contrib.contenttypes import generic
-
 import money
 from money.contrib.django.models.fields import MoneyField
-
 from api.errors import ReceiverError, PaypalAdaptiveApiError
-
 import api
 import settings
 
@@ -107,13 +100,6 @@ class Payment(PaypalAdaptive):
                               choices=STATUS_CHOICES, default='new')
     status_detail = models.CharField(_(u'detailed status'), max_length=2048)
 
-    # @property
-    # def ipn_url(self):
-    #     current_site = Site.objects.get_current()
-    #     kwargs = {'payment_id': self.id, 'secret_uuid': self.secret_uuid}
-    #     ipn_url = reverse('paypal-adaptive-ipn', kwargs=kwargs)
-    #     return "http://%s%s" % (current_site, ipn_url)
-
     @property
     def return_url(self):
         current_site = Site.objects.get_current()
@@ -151,10 +137,6 @@ class Payment(PaypalAdaptive):
         if 'next' in kwargs:
             return_next = "%s?next=%s" % (self.return_url, kwargs.pop('next'))
             endpoint_kwargs.update({'return_url': return_next})
-
-        # Add IPN url
-        # if settings.USE_IPN:
-        #     endpoint_kwargs.update({'ipn_url': self.ipn_url})
 
         # Validate type of receivers and check ReceiverList has primary,
         # otherwise assign first
@@ -262,14 +244,6 @@ class Preapproval(PaypalAdaptive):
                               choices=STATUS_CHOICES, default='new')
     status_detail = models.CharField(_(u'detailed status'), max_length=2048)
 
-    # @property
-    # def ipn_url(self):
-    #     current_site = Site.objects.get_current()
-    #     kwargs = {'payment_id': self.id,
-    #               'secret_uuid': self.secret_uuid}
-    #     ipn_url = reverse('paypal-adaptive-ipn', kwargs=kwargs)
-    #     return "http://%s%s" % (current_site, ipn_url)
-
     @property
     def return_url(self):
         current_site = Site.objects.get_current()
@@ -320,9 +294,6 @@ class Preapproval(PaypalAdaptive):
 
         if kwargs:
             endpoint_kwargs.update(**kwargs)
-
-        # if settings.USE_IPN:
-        #     endpoint_kwargs.update({'ipn_url': self.ipn_url})
 
         res, preapprove = self.call(api.Preapprove, **endpoint_kwargs)
     
