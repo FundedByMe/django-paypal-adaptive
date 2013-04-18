@@ -7,3 +7,4 @@ lib
 *.pyc
 .idea
 paypaladaptive/migrations/
+src
