@@ -18,7 +18,6 @@ import api
 import logging
 import settings
 from django.utils.translation import ugettext_lazy as _
-from signals import received_preapproval
 
 logger = logging.getLogger(__name__)
 
@@ -150,8 +149,6 @@ def preapproval_return(request, preapproval_id, secret_uuid,
     if preapproval.status != 'completed':
         preapproval.status = 'returned'
         preapproval.save()
-
-    received_preapproval.send_robust(sender=None, preapproval=preapproval)
 
     if request.GET.get('next'):
         next_url = request.GET.get('next')
