@@ -1,5 +1,6 @@
 from errors import ReceiverError
 
+
 class Receiver():
     email = None
     amount = None
@@ -41,7 +42,7 @@ class ReceiverList():
         return len(self.receivers)
 
     def has_primary(self):
-        n_primary = len(filter(lambda r: r.primary == True, self.receivers))
+        n_primary = len(filter(lambda r: r.primary is True, self.receivers))
 
         if n_primary > 1:
             raise ReceiverError("There can only be one primary Receiver")

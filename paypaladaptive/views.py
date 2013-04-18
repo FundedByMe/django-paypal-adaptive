@@ -6,17 +6,12 @@ Created on Jun 13, 2011
 @author: greg
 """
 
-from api import IpnError
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from django.http import (HttpResponseForbidden, HttpResponseServerError,
-                         Http404, HttpResponse, HttpResponseBadRequest,
                          HttpResponseRedirect)
 from django.shortcuts import render_to_response
 from django.template.context import RequestContext
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
 from models import Payment, Preapproval
 from django.shortcuts import get_object_or_404
 import api
@@ -24,9 +19,9 @@ import logging
 import settings
 from django.utils.translation import ugettext_lazy as _
 from signals import received_preapproval
-from django.core.urlresolvers import reverse
 
 logger = logging.getLogger(__name__)
+
 
 @login_required
 @transaction.autocommit
@@ -77,8 +72,8 @@ def payment_return(request, id, payment_secret_uuid,
         return HttpResponseServerError('Unexpected error')
 
     elif payment_secret_uuid != payment.secret_uuid:
-        payment.status_detail = _(u"BuyReturn secret \"%s\" did not match")\
-                                % payment_secret_uuid
+        payment.status_detail = (_(u"BuyReturn secret \"%s\" did not match")
+                                 % payment_secret_uuid)
         payment.status = 'error'
         payment.save()
         return HttpResponseServerError('Unexpected error')
