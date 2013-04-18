@@ -98,12 +98,16 @@ def preapproval_cancel(request, preapproval_id,
 
     preapproval = get_object_or_404(Preapproval, id=preapproval_id)
 
-    if request.user != preapproval.purchaser:
-        return HttpResponseForbidden("Unauthorized")
+    # if request.user != preapproval.purchaser:
+    #     return HttpResponseForbidden("Unauthorized")
     
     api.CancelPreapproval(preapproval.preapproval_key)
     preapproval.status = 'canceled'
     preapproval.save()
+
+    if request.GET.get('next'):
+        next_url = request.GET.get('next')
+        return HttpResponseRedirect(next_url)
 
     context = RequestContext(request)
     template_vars = {"is_embedded": settings.USE_EMBEDDED}

@@ -107,12 +107,12 @@ class Payment(PaypalAdaptive):
                               choices=STATUS_CHOICES, default='new')
     status_detail = models.CharField(_(u'detailed status'), max_length=2048)
 
-    @property
-    def ipn_url(self):
-        current_site = Site.objects.get_current()
-        kwargs = {'payment_id': self.id, 'secret_uuid': self.secret_uuid}
-        ipn_url = reverse('paypal-adaptive-ipn', kwargs=kwargs)
-        return "http://%s%s" % (current_site, ipn_url)
+    # @property
+    # def ipn_url(self):
+    #     current_site = Site.objects.get_current()
+    #     kwargs = {'payment_id': self.id, 'secret_uuid': self.secret_uuid}
+    #     ipn_url = reverse('paypal-adaptive-ipn', kwargs=kwargs)
+    #     return "http://%s%s" % (current_site, ipn_url)
 
     @property
     def return_url(self):
@@ -262,13 +262,13 @@ class Preapproval(PaypalAdaptive):
                               choices=STATUS_CHOICES, default='new')
     status_detail = models.CharField(_(u'detailed status'), max_length=2048)
 
-    @property
-    def ipn_url(self):
-        current_site = Site.objects.get_current()
-        kwargs = {'payment_id': self.id,
-                  'secret_uuid': self.secret_uuid}
-        ipn_url = reverse('paypal-adaptive-ipn', kwargs=kwargs)
-        return "http://%s%s" % (current_site, ipn_url)
+    # @property
+    # def ipn_url(self):
+    #     current_site = Site.objects.get_current()
+    #     kwargs = {'payment_id': self.id,
+    #               'secret_uuid': self.secret_uuid}
+    #     ipn_url = reverse('paypal-adaptive-ipn', kwargs=kwargs)
+    #     return "http://%s%s" % (current_site, ipn_url)
 
     @property
     def return_url(self):
@@ -312,6 +312,11 @@ class Preapproval(PaypalAdaptive):
         if 'next' in kwargs:
             return_next = "%s?next=%s" % (self.return_url, kwargs.pop('next'))
             endpoint_kwargs.update({'return_url': return_next})
+
+        if 'cancel' in kwargs:
+            return_cancel = "%s?next=%s" % (self.cancel_url,
+                                            kwargs.pop('cancel'))
+            endpoint_kwargs.update({'cancel_url': return_cancel})
 
         if kwargs:
             endpoint_kwargs.update(**kwargs)
