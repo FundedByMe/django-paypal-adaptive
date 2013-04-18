@@ -11,7 +11,8 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from django.http import (HttpResponseForbidden, HttpResponseServerError,
-                         Http404, HttpResponse, HttpResponseBadRequest)
+                         Http404, HttpResponse, HttpResponseBadRequest,
+                         HttpResponseRedirect)
 from django.shortcuts import render_to_response
 from django.template.context import RequestContext
 from django.views.decorators.csrf import csrf_exempt
@@ -23,18 +24,19 @@ import logging
 import settings
 from django.utils.translation import ugettext_lazy as _
 from signals import received_preapproval
+from django.core.urlresolvers import reverse
 
 logger = logging.getLogger(__name__)
 
 @login_required
 @transaction.autocommit
-def payment_cancel(request, payment_id, payment_secret_uuid,
+def payment_cancel(request, id, payment_secret_uuid,
                    template="paypaladaptive/cancel.html"):
     """Handle incoming cancellation from paypal"""
 
-    logger.debug( "Cancellation received for Payment %s" % payment_id)
+    logger.debug( "Cancellation received for Payment %s" % id)
 
-    payment = get_object_or_404(Payment, id=payment_id,
+    payment = get_object_or_404(Payment, id=id,
                                 secret_uuid=payment_secret_uuid)
     
     if request.user != payment.purchaser:
@@ -51,16 +53,16 @@ def payment_cancel(request, payment_id, payment_secret_uuid,
 
 @login_required
 @transaction.autocommit
-def payment_return(request, payment_id, payment_secret_uuid,
+def payment_return(request, id, payment_secret_uuid,
                    template="paypaladaptive/return.html"):
     """
     Incoming return from paypal process (note this is a return to the site, not
     a returned payment)
     """
 
-    logger.debug("Return received for Payment %s" % payment_id)
+    logger.debug("Return received for Payment %s" % id)
 
-    payment = get_object_or_404(Payment, id=payment_id,
+    payment = get_object_or_404(Payment, id=id,
                                 secret_uuid=payment_secret_uuid)
 
     if request.user != payment.purchaser:
@@ -97,13 +99,13 @@ def payment_return(request, payment_id, payment_secret_uuid,
 
 @login_required
 @transaction.autocommit
-def preapproval_cancel(request, preapproval_id,
+def preapproval_cancel(request, id,
                        template="paypaladaptive/cancel.html"):
     """Incoming preapproval cancellation from paypal"""
 
-    logger.debug("Cancellation received for Preapproval %s" % preapproval_id)
+    logger.debug("Cancellation received for Preapproval %s" % id)
 
-    preapproval = get_object_or_404(Preapproval, id=preapproval_id)
+    preapproval = get_object_or_404(Preapproval, id=id)
 
     if request.user != preapproval.purchaser:
         return HttpResponseForbidden("Unauthorized")
@@ -119,19 +121,19 @@ def preapproval_cancel(request, preapproval_id,
 
 @login_required
 @transaction.autocommit
-def preapproval_return(request, preapproval_id, secret_uuid,
+def preapproval_return(request, id, secret_uuid,
                        template="paypaladaptive/return.html"):
     """
     Incoming return from paypal process (note this is a return to the site,
     not a returned payment)
     """
 
-    logger.debug("Return received for Payment %s" % preapproval_id)
+    logger.debug("Return received for Payment %s" % id)
 
-    preapproval = get_object_or_404(Preapproval, id=preapproval_id)
+    preapproval = get_object_or_404(Preapproval, id=id)
 
-    if request.user != preapproval.purchaser:
-        return HttpResponseForbidden("Unauthorized")
+    # if request.user != preapproval.purchaser:
+    #     return HttpResponseForbidden("Unauthorized")
     
     if preapproval.status not in ['created', 'completed']:
         preapproval.status_detail = _(u"Expected status to be created or"
@@ -158,6 +160,10 @@ def preapproval_return(request, preapproval_id, secret_uuid,
 
     received_preapproval.send_robust(sender=None, preapproval=preapproval)
 
+    if request.GET.get('next'):
+        next = request.GET.get('next')
+        return HttpResponseRedirect(next)
+
     context = RequestContext(request)
     template_vars = {"is_embedded": settings.USE_EMBEDDED,
                      "preapproval": preapproval, }
@@ -168,10 +174,10 @@ def preapproval_return(request, preapproval_id, secret_uuid,
 @require_POST
 @csrf_exempt
 @transaction.autocommit
-def payment_ipn(request, payment_id, secret_uuid):
+def payment_ipn(request, id, secret_uuid):
     """Incoming IPN POST request from Paypal"""
 
-    logger.debug("IPN received for Payment %s" % payment_id)
+    logger.debug("IPN received for Payment %s" % id)
     
     try:
         ipn = api.IPN(request)
@@ -181,10 +187,10 @@ def payment_ipn(request, payment_id, secret_uuid):
         return HttpResponseBadRequest('verify failed')
          
     try:
-        payment = Payment.objects.get(id=payment_id)
+        payment = Payment.objects.get(id=id)
     except ObjectDoesNotExist:
         logger.warning("Could not find Payment ID %s, replying to IPN with"
-                       " 404." % payment_id)
+                       " 404." % id)
         raise Http404
     
     if payment.secret_uuid != secret_uuid:
