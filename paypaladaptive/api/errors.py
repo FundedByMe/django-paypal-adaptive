@@ -22,5 +22,5 @@ class IpnError(PaypalAdaptiveApiError):
     pass
 
 
-class ReceiverError(ValueError):
+class ReceiverError(PaypalAdaptiveApiError):
     pass
