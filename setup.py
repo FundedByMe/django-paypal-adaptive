@@ -14,8 +14,11 @@ setup(
     install_requires=[
         'Django>=1.4.3',
         'python-dateutil==2.1',
+        'python-money==1.0',
+    ],
+    dependency_links=[
         '-e hg+https://bitbucket.org/acoobe/python-money/@edf852242ce422a7320c'
-        '5fc95ceb01c0d38e7647#egg=python_money-dev'
+        '5fc95ceb01c0d38e7647#egg=python_money-1.0'
     ],
     description = 'A pluggable Django application for integrating PayPal'
                   'Adaptive Payments',
