@@ -11,12 +11,9 @@ setup(
     maintainer='Greg McGuire',
     maintainer_email="greg@buzzcar.com",
     url='http://github.com/gmcguire/django-paypal-adaptive',
-    install_requires=[
-        'Django>=1.2',
-        'South>=0.7.3',
-        'python-money>=0.5.0',
-    ],
-    description = 'A pluggable Django application for integrating PayPal Adaptive Payments',
+    install_requires=['Django>=1.4.3', 'python-money>=0.5.0',],
+    description = 'A pluggable Django application for integrating PayPal'
+                  'Adaptive Payments',
     packages=find_packages(),
     include_package_data=True,
     classifiers=[
