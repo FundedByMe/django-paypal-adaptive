@@ -119,12 +119,12 @@ class Payment(PaypalAdaptive):
         """Process the payment
         >>>from paypaladaptive.models import Payment
         >>>from paypaladaptive.api import ReceiverList, Receiver
-        >>>import money
+        >>>from money.Money import Money
         >>>r = Receiver(amount=100, email="msn-facilitator@antonagestam.se", primary=False)
         >>>entrep = Receiver(amount=1900, email="mrbuyer@antonagestam.se", primary=True)
         >>>receivers = ReceiverList([r, entrep])
         >>>p = Payment()
-        >>>p.money=money.Money(2000,'usd')
+        >>>p.money=Money(2000, 'usd')
         >>>p.save()
         >>>p.process(receivers, preapproval_key='PA-2MT146200X905683P')
         """
@@ -265,7 +265,7 @@ class Preapproval(PaypalAdaptive):
         """Process the preapproval
         >>>from paypaladaptive.models import Preapproval
         >>>p = Preapproval()
-        >>>from money import Money
+        >>>from money.Money import Money
         >>>p.money = Money(2000, 'usd')
         >>>from django.contrib.auth.models import User
         >>>sender = User.objects.get(username='appel')
