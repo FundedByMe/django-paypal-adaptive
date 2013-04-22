@@ -5,7 +5,7 @@ import logging
 from errors import *
 from django.utils import simplejson as json
 from paypaladaptive import settings
-from money import Money, Currency
+from money.Money import Money, Currency
 from urllib2 import URLError
 import urllib2
 from datatypes import Receiver, ReceiverList
