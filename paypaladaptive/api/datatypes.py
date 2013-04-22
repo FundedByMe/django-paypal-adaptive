@@ -14,7 +14,7 @@ class Receiver():
     def to_dict(self):
         return {'email': self.email,
                 'amount': self.amount,
-                'primary': self.primary}
+                'primary': 'TRUE' if self.primary else 'FALSE'}
 
     def __unicode__(self):
         return self.email
