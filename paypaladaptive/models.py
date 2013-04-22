@@ -148,6 +148,7 @@ class Payment(PaypalAdaptive):
 
         endpoint_kwargs.update({'receivers': receivers})
 
+        # Use preapproval
         if preapproval is not None:
             if not isinstance(preapproval, Preapproval):
                 raise ValueError("preapproval must be an instance of "
@@ -156,6 +157,7 @@ class Payment(PaypalAdaptive):
             key = preapproval.preapproval_key
             endpoint_kwargs.update({'preapprovalKey': key})
 
+        # Append extra arguments
         endpoint_kwargs.update(kwargs)
 
         # Call endpoint
@@ -292,8 +294,8 @@ class Preapproval(PaypalAdaptive):
                                             kwargs.pop('cancel'))
             endpoint_kwargs.update({'cancel_url': return_cancel})
 
-        if kwargs:
-            endpoint_kwargs.update(**kwargs)
+        # Append extra arguments
+        endpoint_kwargs.update(**kwargs)
 
         res, preapprove = self.call(api.Preapprove, **endpoint_kwargs)
     
