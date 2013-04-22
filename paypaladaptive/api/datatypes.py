@@ -48,3 +48,7 @@ class ReceiverList():
             raise ReceiverError("There can only be one primary Receiver")
 
         return n_primary == 1
+
+    @property
+    def total_amount(self):
+        return sum([r.amount for r in self.receivers])

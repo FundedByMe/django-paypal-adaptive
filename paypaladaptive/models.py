@@ -141,8 +141,8 @@ class Payment(PaypalAdaptive):
         # Validate type of receivers and check ReceiverList has primary,
         # otherwise assign first
         if not isinstance(receivers, api.ReceiverList):
-            raise ReceiverError("receivers must be an instance of "
-                                "ReceiverList")
+            raise ValueError("receivers must be an instance of "
+                             "ReceiverList")
         elif not receivers.has_primary():
             receivers._receivers[0].primary = True
 

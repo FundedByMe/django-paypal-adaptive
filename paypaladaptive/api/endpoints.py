@@ -117,6 +117,10 @@ class Pay(PaypalAdaptiveEndpoint):
 
         if (not isinstance(receivers, ReceiverList) or len(receivers) < 1):
             raise ValueError("receivers must be an instance of ReceiverList")
+
+        if receivers.total_amount > money.amount:
+            raise ValueError("Total amount of the receivers exceeds "
+                             "money.amount")
         
         data = {'actionType': 'PAY',
                 'currencyCode': money.currency.code,
