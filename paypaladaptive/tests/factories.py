@@ -1,23 +1,22 @@
-from django.contrib.auth.models import User
-from paypaladaptive.models import Payment
+from paypaladaptive.models import Payment, Preapproval, PaypalAdaptive
 import factory
 import uuid
+from money.Money import Money
+import datetime
 
-class UserFactory(factory.DjangoModelFactory):
-    FACTORY_FOR = User
 
-    username = factory.Sequence(lambda n: 'user{0}'.format(n))
-    first_name = "Bill"
-    last_name = "Murray"
-    is_active = True
-    is_superuser = False
-    is_staff = False
-    email = "bill@themurrayfoundation.com"
+class PaypalAdaptiveFactory(factory.DjangoModelFactory):
+    FACTORY_FOR = PaypalAdaptive
 
-class PaymentFactory(factory.DjangoModelFactory):
+    money = Money(1400, 'SEK')
+    money_currency = 'SEK'
+    created_date = datetime.datetime.now()
+
+
+class PaymentFactory(PaypalAdaptiveFactory):
     FACTORY_FOR = Payment
-
-    amount = 1400
-    purchaser = factory.SubFactory(UserFactory)
-    owner = factory.SubFactory(UserFactory)
     transaction_id = str(uuid.uuid4())[0:17]
+
+
+class PreapprovalFactory(PaypalAdaptiveFactory):
+    FACTORY_FOR = Preapproval
