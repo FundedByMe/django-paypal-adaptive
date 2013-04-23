@@ -5,41 +5,23 @@ import logging
 from errors import *
 from django.utils import simplejson as json
 from paypaladaptive import settings
-from money.Money import Money, Currency
+from money import Money
 from urllib2 import URLError
 import urllib2
-from datatypes import Receiver, ReceiverList
+from datatypes import ReceiverList
 
 logger = logging.getLogger(__name__)
 
 
 class UrlRequest(object):
-    """Wrapper for urllib2"""
+    def run(self, url, data=None, headers={}):
 
-    _response = None
-    _code = None
-
-    def __init__(self, url, data=None, headers=None):
-        if headers is None:
-            headers = {}
-
-        # urllib - not validated
         request = urllib2.Request(url, data=data, headers=headers)
 
         try:
-            self._response = urllib2.urlopen(request).read()
-            self._code = 200
+            return urllib2.urlopen(request).read()
         except URLError, e:
-            self._response = e.read()
-            self._code = e.code
-
-    @property
-    def content(self):
-        return self._response
-
-    @property
-    def code(self):
-        return self._code
+            return e.read()
 
 
 class PaypalAdaptiveEndpoint(object):
@@ -71,9 +53,9 @@ class PaypalAdaptiveEndpoint(object):
         self.headers.update(headers)
 
     def call(self):
-        raw_data = json.dumps(self.data)
-        request = UrlRequest(self.url, data=raw_data, headers=self.headers)
-        self.raw_response = request.content
+        self.raw_response = UrlRequest().run(self.url,
+                                             data=json.dumps(self.data),
+                                             headers=self.headers)
         self.response = json.loads(self.raw_response)
 
         logger.debug('headers are: %s' % str(self.headers))
@@ -117,10 +99,6 @@ class Pay(PaypalAdaptiveEndpoint):
 
         if (not isinstance(receivers, ReceiverList) or len(receivers) < 1):
             raise ValueError("receivers must be an instance of ReceiverList")
-
-        if receivers.total_amount > money.amount:
-            raise ValueError("Total amount of the receivers exceeds "
-                             "money.amount")
         
         data = {'actionType': 'PAY',
                 'currencyCode': money.currency.code,
