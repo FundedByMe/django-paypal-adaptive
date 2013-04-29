@@ -133,6 +133,38 @@ class Pay(PaypalAdaptiveEndpoint):
         return self.response.get('payKey', None)
 
 
+class PaymentDetails(PaypalAdaptiveEndpoint):
+    """
+    Models the PaymentDetails API operation.
+    Use this to retrieve data about a Payment from Paypal
+
+    """
+
+    url = '%s%s' % (settings.PAYPAL_ENDPOINT, 'PaymentDetails')
+    error_class = PaypalAdaptiveApiError
+
+    def prepare_data(self, payKey=None, transactionId=None, trackingId=None):
+        """Prepare data for PaymentDetails API call"""
+
+        if not any([payKey, transactionId, trackingId]):
+            raise self.error_class("You need to supply one of payKey, "
+                                   "transactionId or trackingId for Paypal to "
+                                   "identify the payment")
+
+        data = {}
+
+        if payKey is not None:
+            data.update({'payKey': payKey})
+
+        if transactionId is not None:
+            data.update({'transactionId': transactionId})
+
+        if trackingId is not None:
+            data.update({'trackingId': trackingId})
+
+        return data
+
+
 class Refund(PaypalAdaptiveEndpoint):
     """
     Models the Refund API operation
