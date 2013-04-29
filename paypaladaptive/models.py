@@ -62,7 +62,7 @@ class PaypalAdaptive(models.Model):
             self.debug_response = endpoint.raw_response
             self.save()
 
-        return (res, endpoint)
+        return res, endpoint
 
     def get_amount(self):
         return self.money.amount
