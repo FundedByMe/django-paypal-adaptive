@@ -273,13 +273,8 @@ class Preapproval(PaypalAdaptive):
         >>>p = Preapproval()
         >>>from money.Money import Money
         >>>p.money = Money(2000, 'usd')
-        >>>from django.contrib.auth.models import User
-        >>>sender = User.objects.get(username='appel')
-        >>>receiver = User.objects.get(username='antonagestam')
-        >>>p.sender = sender
-        >>>p.receiver = receiver
         >>>p.save()
-        >>>extra = {'requireInstantFundingSource': 'TRUE', 'displayMaxTotalAmount': 'TRUE', 'next': '123'}
+        >>>extra = {'requireInstantFundingSource': True, 'displayMaxTotalAmount': True, 'next': '123'}
         >>>p.process(**extra)
         """
 
