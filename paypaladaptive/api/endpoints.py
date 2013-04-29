@@ -2,12 +2,15 @@
 
 from datetime import datetime, timedelta
 import logging
-from errors import *
-from django.utils import simplejson as json
-from paypaladaptive import settings
-from money import Money
-from urllib2 import URLError
 import urllib2
+
+from django.utils import simplejson as json
+
+from money.Money import Money
+
+from paypaladaptive import settings
+
+from errors import *
 from datatypes import ReceiverList
 
 logger = logging.getLogger(__name__)
@@ -20,7 +23,7 @@ class UrlRequest(object):
 
         try:
             return urllib2.urlopen(request).read()
-        except URLError, e:
+        except urllib2.URLError, e:
             return e.read()
 
 
