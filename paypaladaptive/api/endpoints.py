@@ -80,7 +80,15 @@ class PaypalAdaptiveEndpoint(object):
         a dict.
 
         """
-        return {}
+
+        raise PaypalAdaptiveApiError("Endpoint class needs to override the "
+                                     "prepare_data method.")
+
+    def pretty_response(self):
+        print json.dumps(json.loads(self.raw_response), indent=4)
+
+    def pretty_request(self):
+        print json.dumps(self.data, indent=4)
 
 
 class Pay(PaypalAdaptiveEndpoint):
