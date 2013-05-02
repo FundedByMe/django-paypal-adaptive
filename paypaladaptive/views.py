@@ -1,10 +1,9 @@
 """
 Paypal Adaptive Payments supporting views
 
-Created on Jun 13, 2011
-
-@author: greg
 """
+
+import logging
 
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
@@ -12,12 +11,13 @@ from django.http import (HttpResponseForbidden, HttpResponseServerError,
                          HttpResponseRedirect)
 from django.shortcuts import render_to_response
 from django.template.context import RequestContext
-from models import Payment, Preapproval
 from django.shortcuts import get_object_or_404
-import api
-import logging
-import settings
 from django.utils.translation import ugettext_lazy as _
+
+import api
+import settings
+from models import Payment, Preapproval
+
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +32,6 @@ def payment_cancel(request, payment_id, payment_secret_uuid,
 
     payment = get_object_or_404(Payment, id=payment_id,
                                 secret_uuid=payment_secret_uuid)
-    
-    if request.user != payment.purchaser:
-        return HttpResponseForbidden("Unauthorized")
     
     payment.status = 'canceled'
     payment.save()
@@ -59,9 +56,6 @@ def payment_return(request, payment_id, payment_secret_uuid,
     payment = get_object_or_404(Payment, id=payment_id,
                                 secret_uuid=payment_secret_uuid)
 
-    if request.user != payment.purchaser:
-        return HttpResponseForbidden("Unauthorized")
-    
     if payment.status not in ['created', 'completed']:
         payment.status_detail = _(u"Expected status to be created or "
                                   u"completed, not %s - duplicate "
