@@ -8,8 +8,8 @@ setup(
     version=".".join(map(str, paypaladaptive.__version__)),
     author='Greg McGuire',
     author_email='greg@buzzcar.com',
-    maintainer='Greg McGuire',
-    maintainer_email="greg@buzzcar.com",
+    maintainer='Anton Agestam',
+    maintainer_email="msn@antonagestam.se",
     url='http://github.com/gmcguire/django-paypal-adaptive',
     install_requires=[
         'Django>=1.4.3',
