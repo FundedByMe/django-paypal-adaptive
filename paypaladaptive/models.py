@@ -88,13 +88,12 @@ class Payment(PaypalAdaptive):
     """Models a payment made using Paypal"""
 
     STATUS_CHOICES = (
-        ('new', _(u'New')), 
-        ('created', _(u'Created')), 
-        ('error', _(u'Error')), 
-        ('canceled', _(u'Canceled')), 
-        ('returned', _(u'Returned')),
-        ('completed', _(u'Completed')),
-        ('refunded', _(u'Refunded')),
+        ('new', _(u'New')),  # just saved locally
+        ('created', _(u'Created')),  # payment created
+        ('error', _(u'Error')),  # error occured somewhere in the process
+        ('canceled', _(u'Canceled')),  # the payment has been canceled
+        ('completed', _(u'Completed')),  # the payment has been completed
+        ('refunded', _(u'Refunded')),  #
     )
 
     pay_key = models.CharField(_(u'paykey'), max_length=255)
@@ -234,12 +233,11 @@ class Preapproval(PaypalAdaptive):
                                   Preapproval.default_valid_range)
 
     STATUS_CHOICES = (
-        ('new', _(u'New')), 
-        ('created', _(u'Created')), 
-        ('error', _(u'Error')), 
-        ('canceled', _(u'Canceled')), 
-        ('returned', _(u'Returned')),
-        ('completed', _(u'Completed')),
+        ('new', _(u'New')),
+        ('created', _(u'Created')),
+        ('error', _(u'Error')),
+        ('denied', _(u'Denied')),
+        ('approved', _(u'Approved')),
         ('used', _(u'Used')),
     )
     

@@ -124,16 +124,13 @@ def preapproval_return(request, preapproval_id, secret_uuid,
 
     """
 
-    logger.debug("Return received for Payment %s" % preapproval_id)
-
     preapproval = get_object_or_404(Preapproval, id=preapproval_id)
 
-    # if request.user != preapproval.purchaser:
-    #     return HttpResponseForbidden("Unauthorized")
-    
-    if preapproval.status not in ['created', 'completed']:
-        preapproval.status_detail = _(u"Expected status to be created or"
-                                      u" completed, not %s - duplicate"
+    logger.debug("Return received for Preapproval %s" % preapproval_id)
+
+    if preapproval.status != 'created':
+        preapproval.status_detail = _(u"Expected status to be created"
+                                      u" not %s - duplicate"
                                       u" transaction?") % preapproval.status
         preapproval.status = 'error'
         preapproval.save()
