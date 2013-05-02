@@ -8,8 +8,7 @@ Created on Jun 13, 2011
 
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.http import (HttpResponseForbidden, HttpResponseServerError,
-                         HttpResponseRedirect)
+from django.http import (HttpResponseServerError, HttpResponseRedirect)
 from django.shortcuts import render_to_response
 from django.template.context import RequestContext
 from models import Payment, Preapproval
@@ -24,30 +23,24 @@ logger = logging.getLogger(__name__)
 
 @login_required
 @transaction.autocommit
-def payment_cancel(request, payment_id, payment_secret_uuid,
-                   template="paypaladaptive/cancel.html"):
+def payment_cancel(request, payment_id, template="paypaladaptive/cancel.html"):
     """Handle incoming cancellation from paypal"""
 
     logger.debug("Cancellation received for Payment %s" % payment_id)
 
-    payment = get_object_or_404(Payment, id=payment_id,
-                                secret_uuid=payment_secret_uuid)
-    
-    if request.user != payment.purchaser:
-        return HttpResponseForbidden("Unauthorized")
-    
+    payment = get_object_or_404(Payment, id=payment_id)
     payment.status = 'canceled'
     payment.save()
 
     context = RequestContext(request)
     template_vars = {"is_embedded": settings.USE_EMBEDDED}
-        
+
     return render_to_response(template, template_vars, context)
 
 
 @login_required
 @transaction.autocommit
-def payment_return(request, payment_id, payment_secret_uuid,
+def payment_return(request, payment_id, secret_uuid,
                    template="paypaladaptive/return.html"):
     """
     Incoming return from paypal process (note this is a return to the site, not
@@ -56,12 +49,8 @@ def payment_return(request, payment_id, payment_secret_uuid,
 
     logger.debug("Return received for Payment %s" % payment_id)
 
-    payment = get_object_or_404(Payment, id=payment_id,
-                                secret_uuid=payment_secret_uuid)
+    payment = get_object_or_404(Payment, id=payment_id)
 
-    if request.user != payment.purchaser:
-        return HttpResponseForbidden("Unauthorized")
-    
     if payment.status not in ['created', 'completed']:
         payment.status_detail = _(u"Expected status to be created or "
                                   u"completed, not %s - duplicate "
@@ -70,9 +59,9 @@ def payment_return(request, payment_id, payment_secret_uuid,
         payment.save()
         return HttpResponseServerError('Unexpected error')
 
-    elif payment_secret_uuid != payment.secret_uuid:
+    elif secret_uuid != payment.secret_uuid:
         payment.status_detail = (_(u"BuyReturn secret \"%s\" did not match")
-                                 % payment_secret_uuid)
+                                 % secret_uuid)
         payment.status = 'error'
         payment.save()
         return HttpResponseServerError('Unexpected error')
@@ -80,10 +69,10 @@ def payment_return(request, payment_id, payment_secret_uuid,
     if payment.status != 'completed':
         payment.status = 'returned'
         payment.save()
-        
+
     context = RequestContext(request)
     template_vars = {"is_embedded": settings.USE_EMBEDDED}
-        
+
     return render_to_response(template, template_vars, context)
 
 
@@ -97,9 +86,6 @@ def preapproval_cancel(request, preapproval_id,
 
     preapproval = get_object_or_404(Preapproval, id=preapproval_id)
 
-    # if request.user != preapproval.purchaser:
-    #     return HttpResponseForbidden("Unauthorized")
-    
     api.CancelPreapproval(preapproval.preapproval_key)
     preapproval.status = 'canceled'
     preapproval.save()
@@ -110,7 +96,7 @@ def preapproval_cancel(request, preapproval_id,
 
     context = RequestContext(request)
     template_vars = {"is_embedded": settings.USE_EMBEDDED}
-        
+
     return render_to_response(template, template_vars, context)
 
 
@@ -128,9 +114,6 @@ def preapproval_return(request, preapproval_id, secret_uuid,
 
     preapproval = get_object_or_404(Preapproval, id=preapproval_id)
 
-    # if request.user != preapproval.purchaser:
-    #     return HttpResponseForbidden("Unauthorized")
-    
     if preapproval.status not in ['created', 'completed']:
         preapproval.status_detail = _(u"Expected status to be created or"
                                       u" completed, not %s - duplicate"
