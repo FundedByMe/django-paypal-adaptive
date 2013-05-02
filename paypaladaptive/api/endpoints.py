@@ -2,7 +2,6 @@
 
 from datetime import datetime, timedelta
 import logging
-import urllib2
 
 from django.utils import simplejson as json
 
@@ -12,21 +11,9 @@ from paypaladaptive import settings
 
 from errors import *
 from datatypes import ReceiverList
+from httpwrapper import UrlRequest
 
 logger = logging.getLogger(__name__)
-
-
-class UrlRequest(object):
-    def run(self, url, data=None, headers=None):
-        if headers is None:
-            headers = {}
-
-        request = urllib2.Request(url, data=data, headers=headers)
-
-        try:
-            return urllib2.urlopen(request).read()
-        except urllib2.URLError, e:
-            return e.read()
 
 
 class PaypalAdaptiveEndpoint(object):
