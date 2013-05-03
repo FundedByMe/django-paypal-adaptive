@@ -172,7 +172,7 @@ def preapproval_return(request, preapproval_id, secret_uuid,
 @require_POST
 @csrf_exempt
 @transaction.autocommit
-def payment_ipn(request, object_id, object_secret_uuid, ipn):
+def ipn(request, object_id, object_secret_uuid, ipn):
     """
     Incoming IPN POST request from Paypal
 

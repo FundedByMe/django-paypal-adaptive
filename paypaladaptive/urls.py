@@ -29,14 +29,6 @@ if settings.USE_IPN:
     urlpatterns += patterns(
         '',
 
-        url(r'^payment_ipn/(?P<payment_id>\d+)/(?P<payment_secret_uuid>\w+)/$',
-            views.payment_ipn, name="paypal-adaptive-payment-ipn"),
-
-        url(r'^preapproval_ipn/(?P<preapproval_id>\d+)/'
-            r'(?P<preapproval_secret_uuid>\w+)/$', views.preapproval_ipn,
-            name="paypal-adaptive-preapproval-ipn"),
-
-        url(r'^adjustment_ipn/(?P<payment_id>\d+)/'
-            r'(?P<payment_secret_uuid>\w+)/$', views.adjustment_ipn,
-            name="paypal-adaptive-adjustment-ipn"),
+        url(r'^ipn/(?P<object_id>\d+)/(?P<object_secret_uuid>\w+)/$',
+            views.ipn, name="paypal-adaptive-ipn"),
     )

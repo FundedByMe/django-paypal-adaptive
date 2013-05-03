@@ -267,9 +267,9 @@ class Preapproval(PaypalAdaptive):
     @property
     def ipn_url(self):
         current_site = Site.objects.get_current()
-        kwargs = {'preapproval_id': self.id,
-                  'preapproval_secret_uuid': self.secret_uuid}
-        ipn_url = reverse('paypal-adaptive-preapproval-ipn', kwargs=kwargs)
+        kwargs = {'object_id': self.id,
+                  'object_secret_uuid': self.secret_uuid}
+        ipn_url = reverse('paypal-adaptive-ipn', kwargs=kwargs)
         return "http://%s%s" % (current_site, ipn_url)
 
     @transaction.autocommit
