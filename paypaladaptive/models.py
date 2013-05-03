@@ -264,6 +264,14 @@ class Preapproval(PaypalAdaptive):
                              kwargs=kwargs)
         return "http://%s%s" % (current_site, cancel_url)
 
+    @property
+    def ipn_url(self):
+        current_site = Site.objects.get_current()
+        kwargs = {'preapproval_id': self.id,
+                  'preapproval_secret_uuid': self.secret_uuid}
+        ipn_url = reverse('paypal-adaptive-preapproval-ipn', kwargs=kwargs)
+        return "http://%s%s" % (current_site, ipn_url)
+
     @transaction.autocommit
     def process(self, **kwargs):
         """Process the preapproval
@@ -290,6 +298,9 @@ class Preapproval(PaypalAdaptive):
             return_cancel = "%s?next=%s" % (self.cancel_url,
                                             kwargs.pop('cancel'))
             endpoint_kwargs.update({'cancel_url': return_cancel})
+
+        if settings.USE_IPN:
+            endpoint_kwargs.update({'ipn_url': self.ipn_url})
 
         # Append extra arguments
         endpoint_kwargs.update(**kwargs)
