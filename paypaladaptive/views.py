@@ -172,76 +172,45 @@ def preapproval_return(request, preapproval_id, secret_uuid,
 @require_POST
 @csrf_exempt
 @transaction.autocommit
-def payment_ipn(request, payment_id, payment_secret_uuid, ipn):
+def payment_ipn(request, object_id, object_secret_uuid, ipn):
     """
     Incoming IPN POST request from Paypal
 
     """
 
+    object_class = {
+        constants.IPN_TYPE_PAYMENT: Payment,
+        constants.IPN_TYPE_PREAPPROVAL: Preapproval,
+        constants.IPN_TYPE_ADJUSTMENT: Payment
+    }[ipn.type]
+
     try:
-        payment = Payment.objects.get(id=payment_id)
-    except Payment.DoesNotExist:
-        logger.warning('Could not find Payment ID %s, replying to IPN with '
-                       '404.' % payment_id)
+        obj = object_class.objects.get(pk=object_id)
+    except object_class.DoesNotExist:
+        logger.warning('Could not find %s ID %s, replying to IPN with '
+                       '404.' % (object_class.__name__, object_id))
         raise Http404
 
-    if payment.secret_uuid != payment_secret_uuid:
-        payment.status = 'error'
-        payment.status_detail = ('IPN secret "%s" did not match'
-                                 % payment_secret_uuid)
-        payment.save()
+    if obj.secret_uuid != object_secret_uuid:
+        obj.status = 'error'
+        obj.status_detail = ('IPN secret "%s" did not match db'
+                             % object_secret_uuid)
+        obj.save()
         return HttpResponseBadRequest('secret uuid mismatch')
 
-    # Type of IPN?
+    # IPN type-specific operations
     if ipn.type == constants.IPN_TYPE_PAYMENT:
-        payment.transaction_id = ipn.transactions[0].id
+        obj.transaction_id = ipn.transactions[0].id
 
-        if payment.amount != ipn.transactions[0].amount:
-            payment.status = 'error'
-            payment.status_detail = ("IPN amounts didn't match. Payment "
-                                     "requested %s. Payment made %s"
-                                     % (payment.amount,
-                                        ipn.transactions[0].amount))
+        if obj.amount != ipn.transactions[0].amount:
+            obj.status = 'error'
+            obj.status_detail = ("IPN amounts didn't match. Payment requested "
+                                 "%s. Payment made %s"
+                                 % (obj.amount, ipn.transactions[0].amount))
         else:
-            payment.status = 'completed'
+            obj.status = 'completed'
 
-    payment.save()
+    obj.save()
 
     # Ok, no content
     return HttpResponse(status=204)
-
-
-@takes_ipn
-@require_POST
-@csrf_exempt
-@transaction.autocommit
-def preapproval_ipn(request, preapproval_id, preapproval_secret_uuid, ipn):
-    """
-    Incoming IPN POST request from Paypal
-
-    """
-
-    if ipn.type != constants.IPN_TYPE_PREAPPROVAL:
-        return HttpResponseBadRequest('invalid ipn type')
-
-    # TODO:
-    logger.error('IPN preapproval request is not implemented!')
-    raise NotImplementedError
-
-
-@takes_ipn
-@require_POST
-@csrf_exempt
-@transaction.autocommit
-def adjustment_ipn(request, ipn):
-    """
-    Incoming IPN POST request from Paypal
-
-    """
-
-    if ipn.type != constants.IPN_TYPE_ADJUSTMENT:
-        return HttpResponseBadRequest('invalid ipn type')
-
-    # TODO:
-    logger.error('IPN adjustment request is not implemented!')
-    raise NotImplementedError

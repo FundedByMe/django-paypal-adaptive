@@ -54,15 +54,15 @@ class IPN(object):
         # verify that the request is paypal's
         url = '%s?cmd=_notify-validate' % settings.PAYPAL_PAYMENT_HOST
         data = urllib.urlencode(request.POST.copy())
-        verify_response = UrlRequest().run(url, data=data)
+        verify_request = UrlRequest().call(url, data=data)
 
         # check code
-        if verify_response.code != 200:
+        if verify_request.code != 200:
             raise IpnError('PayPal response code was %i'
-                           % verify_response.code)
+                           % verify_request.code)
 
         # check response
-        raw_response = verify_response.content
+        raw_response = verify_request.response
         if raw_response != 'VERIFIED':
             raise IpnError('PayPal response was "%s"' % raw_response)
 
