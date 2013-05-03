@@ -21,6 +21,16 @@ from django.utils.translation import ugettext_lazy as _
 logger = logging.getLogger(__name__)
 
 
+def render(request, template, template_vars={}):
+    if request.GET.get('next'):
+        return HttpResponseRedirect(request.GET.get('next'))
+
+    context = RequestContext(request)
+    d = {"is_embedded": settings.USE_EMBEDDED}.update(template_vars)
+
+    return render_to_response(template, d, context)
+
+
 @login_required
 @transaction.autocommit
 def payment_cancel(request, payment_id, template="paypaladaptive/cancel.html"):
@@ -31,11 +41,7 @@ def payment_cancel(request, payment_id, template="paypaladaptive/cancel.html"):
     payment = get_object_or_404(Payment, id=payment_id)
     payment.status = 'canceled'
     payment.save()
-
-    context = RequestContext(request)
-    template_vars = {"is_embedded": settings.USE_EMBEDDED}
-
-    return render_to_response(template, template_vars, context)
+    return render(request, template)
 
 
 @login_required
@@ -51,15 +57,7 @@ def payment_return(request, payment_id, secret_uuid,
 
     payment = get_object_or_404(Payment, id=payment_id)
 
-    if payment.status not in ['created', 'completed']:
-        payment.status_detail = _(u"Expected status to be created or "
-                                  u"completed, not %s - duplicate "
-                                  u"transaction?") % payment.status
-        payment.status = 'error'
-        payment.save()
-        return HttpResponseServerError('Unexpected error')
-
-    elif secret_uuid != payment.secret_uuid:
+    if secret_uuid != payment.secret_uuid:
         payment.status_detail = (_(u"BuyReturn secret \"%s\" did not match")
                                  % secret_uuid)
         payment.status = 'error'
@@ -70,10 +68,7 @@ def payment_return(request, payment_id, secret_uuid,
         payment.status = 'returned'
         payment.save()
 
-    context = RequestContext(request)
-    template_vars = {"is_embedded": settings.USE_EMBEDDED}
-
-    return render_to_response(template, template_vars, context)
+    return render(request, template)
 
 
 @login_required
@@ -90,14 +85,7 @@ def preapproval_cancel(request, preapproval_id,
     preapproval.status = 'canceled'
     preapproval.save()
 
-    if request.GET.get('next'):
-        next_url = request.GET.get('next')
-        return HttpResponseRedirect(next_url)
-
-    context = RequestContext(request)
-    template_vars = {"is_embedded": settings.USE_EMBEDDED}
-
-    return render_to_response(template, template_vars, context)
+    return render(request, template)
 
 
 @login_required
@@ -133,12 +121,5 @@ def preapproval_return(request, preapproval_id, secret_uuid,
         preapproval.status = 'returned'
         preapproval.save()
 
-    if request.GET.get('next'):
-        next_url = request.GET.get('next')
-        return HttpResponseRedirect(next_url)
-
-    context = RequestContext(request)
-    template_vars = {"is_embedded": settings.USE_EMBEDDED,
-                     "preapproval": preapproval, }
-
-    return render_to_response(template, template_vars, context)
+    return render(request, template,
+                  template_vars={"preapproval": preapproval})
