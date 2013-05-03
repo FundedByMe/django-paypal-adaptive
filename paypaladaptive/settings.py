@@ -32,4 +32,5 @@ SHIPPING = getattr(settings, 'PAYPAL_USE_SHIPPING', False)
 DEFAULT_CURRENCY = getattr(settings, 'DEFAULT_CURRENCY', 'USD')
 set_default_currency(code=DEFAULT_CURRENCY)
 
+# Should tests hit Paypaladaptive or not? Defaults to using hard-coded data
 TEST_WITH_MOCK = True
