@@ -4,23 +4,37 @@ from django.test import TestCase
 from django.core.urlresolvers import reverse
 from django.contrib.sites.models import Site
 
-from money import Money
+from money.Money import Money
+from mock import patch
+
 from paypaladaptive import settings
 from paypaladaptive.models import Preapproval, Payment
 from paypaladaptive.api import Receiver, ReceiverList
-from mock import patch
+from paypaladaptive.api.httpwrapper import UrlResponse
+
+
+if not settings.TEST_WITH_MOCK:
+    class FakePatch:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __call__(self, f):
+            return f
+
+    patch = FakePatch
 
 
 class MockUrlRequest(object):
-    def run(self, url, data=None, headers=None):
+    def call(self, url, data=None, headers=None):
         self._assert_valid_url(url)
         self._assert_valid_data(json.loads(data))
         self._assert_valid_headers(headers)
-        return self._response()
+        self._set_response()
+        return self
 
-    def _response(self):
-        """ Define JSON string returned by paypal"""
-        raise RuntimeError
+    def _set_response(self):
+        """Define JSON string returned by paypal"""
+        raise NotImplementedError
 
     def _assert_valid_url(self, url):
         valid_url = "%s%s" % (settings.PAYPAL_ENDPOINT, self._endpoint_name())
@@ -28,7 +42,13 @@ class MockUrlRequest(object):
 
     def _endpoint_name(self):
         """"Name of API call to paypal"""
-        raise RuntimeError
+        raise NotImplementedError
+
+    def _assert_valid_return_url(self, url):
+        raise NotImplementedError
+
+    def _assert_valid_cancel_url(self, url):
+        raise NotImplementedError
 
     def _assert_valid_data(self, data):
         self._assert_valid_return_url(data["returnUrl"])
@@ -58,16 +78,26 @@ class MockUrlRequest(object):
         return_url = reverse(template_name, kwargs=kwargs)
         assert url == "http://%s%s" % (current_site, return_url)
 
+    @property
+    def response(self):
+        return self._response.data
+
+    @property
+    def code(self):
+        return self._response.code
+
 
 class MockUrlRequestPreapproval(MockUrlRequest):
 
-    def _response(self):
-        return """{\"responseEnvelope\":
-                {\"timestamp\": \"2013-04-23T02:03:21.737-07:00\",
-                 \"ack\": \"Success\",
-                 \"correlationId\": \"877ca0ec3b8db\",
-                 \"build\": \"5710487\"},
-                \"preapprovalKey\": \"PA-8X048594NU8990615\"}"""
+    def _set_response(self):
+        data = """{\"responseEnvelope\":
+                   {\"timestamp\": \"2013-04-23T02:03:21.737-07:00\",
+                    \"ack\": \"Success\",
+                    \"correlationId\": \"877ca0ec3b8db\",
+                    \"build\": \"5710487\"},
+                   \"preapprovalKey\": \"PA-8X048594NU8990615\"}"""
+        self._response = UrlResponse(data, {}, 200)
+        return self
 
     def _endpoint_name(self):
         return "Preapproval"
@@ -95,14 +125,15 @@ class MockUrlRequestPreapproval(MockUrlRequest):
 
 
 class MockUrlRequestPayment(MockUrlRequest):
-    def _response(self):
-        return """{\"responseEnvelope\":
-                {\"timestamp\":\"2013-04-23T07:45:36.456-07:00\",
-                 \"ack\":\"Success\",
-                 \"correlationId\":\"0d9ee9c8aab09\",
-                 \"build\":\"5710487\"},
-                \"payKey\":\"AP-7KL74713BP0955948\",
-                \"paymentExecStatus\":\"CREATED\"}"""
+    def _set_response(self):
+        data = """{\"responseEnvelope\":
+                   {\"timestamp\":\"2013-04-23T07:45:36.456-07:00\",
+                    \"ack\":\"Success\",
+                    \"correlationId\":\"0d9ee9c8aab09\",
+                    \"build\":\"5710487\"},
+                   \"payKey\":\"AP-7KL74713BP0955948\",
+                   \"paymentExecStatus\":\"CREATED\"}"""
+        self._response = UrlResponse(data, {}, 200)
 
     def _endpoint_name(self):
         return "Pay"
