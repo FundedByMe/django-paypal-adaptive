@@ -41,6 +41,13 @@ class IPN(object):
             
         @classmethod
         def slicedict(cls, d, s):
+            """
+            Iterates over a dict d and filters out all values whose key starts
+            with a string s and then removes that string s from the key and
+            returns a new dict.
+
+            """
+
             return dict((str(k.replace(s, '', 1)), v) for k,v in d.iteritems() if k.startswith(s)) 
 
     def __init__(self, request):
