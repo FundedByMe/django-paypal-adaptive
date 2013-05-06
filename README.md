@@ -12,7 +12,8 @@ package.
 Settings
 ---
 
-***TEST_WITH_MOCK***
+___TEST_WITH_MOCK___
+
 Set whether tests should be run with built-in mocking responses and requests
 or if the testing should spawn requests that hits Paypal's APIs directly.
 Defaults to True. Override in your settings file like this:
