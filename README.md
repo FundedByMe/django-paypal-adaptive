@@ -1,3 +1,6 @@
+Django Paypal Adaptive
+===
+
 This is not a stable repository. The API and the modules will be subject to
 heavy changes and not all Paypal Adaptive endpoints are covered. FundedByMe
 will help make the covering of the Pay, Preapproval and IPN endpoints as good
@@ -7,9 +10,11 @@ Please reach out to us if you're interested in helping maintaining this
 package.
 
 
-A trivial example for now:
+Everything below is outdated.
+===
 
----------------
+A trivial example for now:
+---
 
 
 urls.py:
