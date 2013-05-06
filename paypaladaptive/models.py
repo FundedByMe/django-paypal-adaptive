@@ -79,6 +79,14 @@ class PaypalAdaptive(models.Model):
         self.money.currency = value
 
     currency = property(get_currency, set_currency)
+
+    @property
+    def ipn_url(self):
+        current_site = Site.objects.get_current()
+        kwargs = {'object_id': self.id,
+                  'object_secret_uuid': self.secret_uuid}
+        ipn_url = reverse('paypal-adaptive-ipn', kwargs=kwargs)
+        return "http://%s%s" % (current_site, ipn_url)
     
     class Meta:
         abstract = True
@@ -263,14 +271,6 @@ class Preapproval(PaypalAdaptive):
         cancel_url = reverse('paypal-adaptive-preapproval-cancel',
                              kwargs=kwargs)
         return "http://%s%s" % (current_site, cancel_url)
-
-    @property
-    def ipn_url(self):
-        current_site = Site.objects.get_current()
-        kwargs = {'object_id': self.id,
-                  'object_secret_uuid': self.secret_uuid}
-        ipn_url = reverse('paypal-adaptive-ipn', kwargs=kwargs)
-        return "http://%s%s" % (current_site, ipn_url)
 
     @transaction.autocommit
     def process(self, **kwargs):
