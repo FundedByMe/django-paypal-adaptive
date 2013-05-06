@@ -1,2 +1,2 @@
 from tests import *
-from ipn import TestPaymentIpn
+from ipn import TestPaymentIPN

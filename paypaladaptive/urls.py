@@ -12,16 +12,16 @@ import settings
 urlpatterns = patterns(
     '',
 
-    url(r'^cancel/pay/(?P<payment_id>\d+)/$', views.payment_cancel,
+    url(r'^pay/cancel/(?P<payment_id>\d+)/$', views.payment_cancel,
         name="paypal-adaptive-payment-cancel"),
 
-    url(r'^return/pay/(?P<payment_id>\d+)/(?P<secret_uuid>\w+)/$',
+    url(r'^pay/return/(?P<payment_id>\d+)/(?P<secret_uuid>\w+)/$',
         views.payment_return, name="paypal-adaptive-payment-return"),
 
-    url(r'^cancel/pre/(?P<preapproval_id>\d+)/$', views.preapproval_cancel,
+    url(r'^pre/cancel/(?P<preapproval_id>\d+)/$', views.preapproval_cancel,
         name="paypal-adaptive-preapproval-cancel"),
 
-    url(r'^return/pre/(?P<preapproval_id>\d+)/(?P<secret_uuid>\w+)/$',
+    url(r'^pre/return/(?P<preapproval_id>\d+)/(?P<secret_uuid>\w+)/$',
         views.preapproval_return, name="paypal-adaptive-preapproval-return"),
 )
 
