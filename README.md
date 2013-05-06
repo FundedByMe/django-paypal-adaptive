@@ -9,6 +9,15 @@ as possible but we might not have the resources to perfect this project.
 Please reach out to us if you're interested in helping maintaining this
 package.
 
+Settings
+---
+
+***TEST_WITH_MOCK***
+Set whether tests should be run with built-in mocking responses and requests
+or if the testing should spawn requests that hits Paypal's APIs directly.
+Defaults to True. Override in your settings file like this:
+
+    PAYPAL_TEST_WITH_MOCK = False
 
 Everything below is outdated.
 ===
