@@ -206,7 +206,16 @@ def ipn(request, object_id, object_secret_uuid, ipn):
             obj.status = 'error'
             obj.status_detail = ("IPN amounts didn't match. Payment requested "
                                  "%s. Payment made %s"
-                                 % (obj.amount, ipn.transactions[0].amount))
+                                 % (obj.money, ipn.transactions[0].amount))
+        else:
+            obj.status = 'completed'
+
+    elif ipn.type == constants.IPN_TYPE_PREAPPROVAL:
+        if obj.money != ipn.transactions[0].amount:
+            obj.status = 'error'
+            obj.status_detail = ("IPN amounts didn't match. Preapproval "
+                                 "requested %s. Preapproval made %s"
+                                 % (obj.money, ipn.transactions[0].amount))
         else:
             obj.status = 'completed'
 

@@ -1,3 +1,5 @@
+from urllib import urlencode
+
 import django.test as test
 from django.contrib.sites.models import Site
 from django.core.urlresolvers import reverse
@@ -5,10 +7,9 @@ from django.core.urlresolvers import reverse
 from money.Money import Money
 import mock
 
-from paypaladaptive.models import Payment
+from paypaladaptive.models import Payment, Preapproval
 from paypaladaptive.api.httpwrapper import UrlRequest, UrlResponse
-
-from factories import PaymentFactory
+from factories import PreapprovalFactory, PaymentFactory
 
 
 class MockIPNVerifyRequest(UrlRequest):
@@ -74,7 +75,6 @@ class TestPaymentIPN(test.TestCase):
         }
 
         self.mock_ipn_call(data)
-        from urllib import urlencode
         qs = urlencode(data)
         self.assertEqual(MockIPNVerifyRequest.data, qs)
 
@@ -157,3 +157,82 @@ class TestPaymentIPN(test.TestCase):
 
         response = self.mock_ipn_call(data, ipn_url)
         self.assertEqual(response.status_code, 404)
+
+
+class TestPreapprovalIPN(test.TestCase):
+    def setUp(self):
+        self.preapproval = PreapprovalFactory.create(status='created')
+
+    @mock.patch('paypaladaptive.api.ipn.endpoints.UrlRequest',
+                MockIPNVerifyRequest)
+    def mock_ipn_call(self, data, url=None):
+        c = test.Client()
+        url = url if url is not None else self.preapproval.ipn_url
+
+        return c.post(url, data=data)
+
+    def get_preapproval(self):
+        return Preapproval.objects.get(pk=self.preapproval.pk)
+
+    def testPasses(self):
+        """Test valid IPN call"""
+
+        money = str(self.preapproval.money)
+        data = {
+            'status': 'COMPLETED',
+            'transaction_type': 'Adaptive Payment Preapproval',
+            'transaction[0].id': '1',
+            'transaction[0].amount': money,
+            'transaction[0].status': 'PREAPPROVED',
+        }
+
+        response = self.mock_ipn_call(data)
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.content, '')
+
+        preapproval = self.get_preapproval()
+
+        self.assertEqual(preapproval.status, 'completed')
+
+    def testVerificationCall(self):
+        """Test that the verification call is made with correct params"""
+
+        money = str(self.preapproval.money)
+        data = {
+            'status': 'COMPLETED',
+            'transaction_type': 'Adaptive Payment Preapproval',
+            'transaction[0].id': '1',
+            'transaction[0].amount': money,
+            'transaction[0].status': 'COMPLETED',
+        }
+
+        self.mock_ipn_call(data)
+        qs = urlencode(data)
+        self.assertEqual(MockIPNVerifyRequest.data, qs)
+
+
+    def testMismatchedAmounts(self):
+        """Test mismatching amounts"""
+
+        wrong_amount = str(Money("1337.23", 'SEK'))
+
+        data = {
+            'status': 'COMPLETED',
+            'transaction_type': 'Adaptive Payment Preapproval',
+            'transaction[0].id': 1,
+            'transaction[0].amount': wrong_amount,
+            'transaction[0].status': 'COMPLETED',
+            'transaction[1].id': 2,
+            'transaction[1].amount': wrong_amount,
+            'transaction[1].status': 'COMPLETED',
+        }
+
+        self.mock_ipn_call(data)
+
+        preapproval = self.get_preapproval()
+
+        self.assertEqual(preapproval.status, 'error')
+        self.assertEqual(preapproval.status_detail,
+                         ("IPN amounts didn't match. Preapproval "
+                          "requested %s. Preapproval made %s"
+                          % (preapproval.money, wrong_amount)))
