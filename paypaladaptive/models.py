@@ -55,8 +55,6 @@ class PaypalAdaptive(models.Model):
 
         try:
             res = endpoint.call()
-        except PaypalAdaptiveApiError, e:
-            raise e
         finally:
             self.debug_request = json.dumps(endpoint.data)
             self.debug_response = endpoint.raw_response

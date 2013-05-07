@@ -1,15 +1,19 @@
+import logging
 import  urllib
 
+from django.utils import simplejson
+
+from dateutil.parser import parse
 from money.Money import Money, Currency
 from pytz import utc
-from dateutil.parser import parse
 
+from constants import *
 from paypaladaptive import settings
-
 from paypaladaptive.api.errors import IpnError
 from paypaladaptive.api.httpwrapper import UrlRequest
 
-from constants import *
+
+logger = logging.getLogger(__name__)
 
 
 class IPN(object):
@@ -23,6 +27,7 @@ class IPN(object):
 
     class Transaction(object):
         def __init__(self, **kwargs):
+            #print kwargs.get('amount', None)
             self.id = kwargs.get('id', None)
             self.status = kwargs.get('status', None)
             self.id_for_sender = kwargs.get('id_for_sender', None)
@@ -48,7 +53,8 @@ class IPN(object):
 
             """
 
-            return dict((str(k.replace(s, '', 1)), v) for k,v in d.iteritems() if k.startswith(s)) 
+            d = dict((str(k.replace(s, '', 1)), v) for k,v in d.iteritems() if k.startswith(s))
+            return d
 
     def __init__(self, request):
         # verify that the request is paypal's
@@ -82,6 +88,12 @@ class IPN(object):
                            % request.GET.get('status'))
 
         try:
+            self.process_transactions(request)
+        except Exception, e:
+            logger.error("Could not process transactions:" + e.message)
+            raise e
+
+        try:
             # payments and adjustments define these
             self.status = request.POST.get('status', None)
             self.sender_email = request.POST.get('sender_email', None)
@@ -97,9 +109,7 @@ class IPN(object):
             self.trackingId = request.POST.get('trackingId', None)
             self.preapproval_key = request.POST.get('preapproval_key', None)
             self.reason_code = request.POST.get('reason_code', None)
-            
-            self.process_transactions(request)
-                
+
             # preapprovals define these
             self.approved = request.POST.get('approved', 'false') == 'true'            
             self.current_number_of_payments = IPN.process_int(request.POST.get('current_number_of_payments', None))
@@ -116,7 +126,7 @@ class IPN(object):
             self.payment_period = request.POST.get('payment_period', None)
             self.pin_type = request.POST.get('pin_type', None)
         except Exception, e:
-            raise IpnError(e)
+            raise IpnError('Could not parse request: ' + e.message)
         
         # Verify enumerations
         if self.status and self.status not in [IPN_STATUS_CREATED,
@@ -187,10 +197,22 @@ class IPN(object):
         self.transactions = []
         
         transaction_nums = range(6)
+        transactions = request.POST.get('transaction')
+
+        print request.POST
+
+        pass
+
+
+        if not isinstance(transactions, list):
+            transactions = [transactions]
+
         for transaction_num in transaction_nums:
-            transdict = IPN.Transaction.slicedict(request.POST,
-                                                  'transaction[%s].'
-                                                  % transaction_num)
-            
-            if len(transdict) > 0:
+            try:
+                transdict = transactions[transaction_num]
+                #print type(transdict)
+                #print transdict
+                transdict = simplejson.loads(transdict)
                 self.transactions.append(IPN.Transaction(**transdict))
+            except IndexError:
+                pass
