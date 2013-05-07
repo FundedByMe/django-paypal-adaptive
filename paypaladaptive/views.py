@@ -202,7 +202,7 @@ def ipn(request, object_id, object_secret_uuid, ipn):
     if ipn.type == constants.IPN_TYPE_PAYMENT:
         obj.transaction_id = ipn.transactions[0].id
 
-        if obj.amount != ipn.transactions[0].amount:
+        if obj.money != ipn.transactions[0].amount:
             obj.status = 'error'
             obj.status_detail = ("IPN amounts didn't match. Payment requested "
                                  "%s. Payment made %s"

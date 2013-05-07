@@ -1,7 +1,6 @@
-from decimal import Decimal
-import urllib
-
 import django.test as test
+from django.contrib.sites.models import Site
+from django.core.urlresolvers import reverse
 
 from money.Money import Money
 import mock
@@ -14,12 +13,15 @@ from factories import PaymentFactory
 
 class MockIPNVerifyRequest(UrlRequest):
     def call(self, url, data=None, headers=None):
+        MockIPNVerifyRequest.data = data
         self._response = UrlResponse(data='VERIFIED', meta={}, code=200)
         return self
 
 
 class MockIPNVerifyRequestInvalid(UrlRequest):
+    data = None
     def call(self, url, data=None, headers=None):
+        self.data = data
         self._response = UrlResponse(data='invalid', meta={}, code=200)
         return self
 
@@ -30,9 +32,9 @@ class TestPaymentIPN(test.TestCase):
 
     @mock.patch('paypaladaptive.api.ipn.endpoints.UrlRequest',
                 MockIPNVerifyRequest)
-    def mock_ipn_call(self, data):
+    def mock_ipn_call(self, data, url=None):
         c = test.Client()
-        url = self.payment.ipn_url
+        url = url if url is not None else self.payment.ipn_url
 
         return c.post(url, data=data)
 
@@ -40,22 +42,15 @@ class TestPaymentIPN(test.TestCase):
         return Payment.objects.get(pk=self.payment.pk)
 
     def testPasses(self):
+        """Test valid IPN call"""
+
         money = str(self.payment.money)
-        query_string = ("status=COMPLETED"
-                        "&transaction_type=Adaptive+Payment+PAY"
-                        "&transaction[0][id]=1"
-                        "&transaction[0][amount]=100.00+SEK"
-                        "&transaction[0][status]=COMPLETED")
         data = {
             'status': 'COMPLETED',
             'transaction_type': 'Adaptive Payment PAY',
-            'transaction': [
-                {
-                    'id': 1,
-                    'amount': money,
-                    'status': 'COMPLETED',
-                },
-            ]
+            'transaction[0].id': '1',
+            'transaction[0].amount': money,
+            'transaction[0].status': 'COMPLETED',
         }
 
         response = self.mock_ipn_call(data)
@@ -64,40 +59,40 @@ class TestPaymentIPN(test.TestCase):
 
         payment = self.get_payment()
 
-        self.assertEqual(payment.status, 'COMPLETED')
+        self.assertEqual(payment.status, 'completed')
 
-        #self.assertEqual(response.code, 204)
-        # -X mock incoming call from PP
-        # -X mock call to PP and respond with VERIFY or (INVALID?!)
+    def testVerificationCall(self):
+        """Test that the verification call is made with correct params"""
 
-        # -> the test should see that the payment model us updated according
-        # -> to what PP says ...
+        money = str(self.payment.money)
+        data = {
+            'status': 'COMPLETED',
+            'transaction_type': 'Adaptive Payment PAY',
+            'transaction[0].id': '1',
+            'transaction[0].amount': money,
+            'transaction[0].status': 'COMPLETED',
+        }
 
-        # -> try with different calls, like errors and so on
-        # -> also cases for when VERIFY is missing
-        # -> same for the preapproval and adjustment calls :))))
-        # -> test 404 if missing object
-        # -> test exception if mismatched uuid
-        # -> test mismatching amounts
+        self.mock_ipn_call(data)
+        from urllib import urlencode
+        qs = urlencode(data)
+        self.assertEqual(MockIPNVerifyRequest.data, qs)
+
 
     def testMismatchedAmounts(self):
+        """Test mismatching amounts"""
+
         wrong_amount = str(Money("1337.23", 'SEK'))
 
         data = {
             'status': 'COMPLETED',
             'transaction_type': 'Adaptive Payment PAY',
-            'transaction': [
-                {
-                    'id': 1,
-                    'amount': wrong_amount,
-                    'status': 'COMPLETED',
-                },
-                {
-                    'id': 2,
-                    'amount': wrong_amount,
-                    'status': 'COMPLETED',
-                },
-            ]
+            'transaction[0].id': 1,
+            'transaction[0].amount': wrong_amount,
+            'transaction[0].status': 'COMPLETED',
+            'transaction[1].id': 2,
+            'transaction[1].amount': wrong_amount,
+            'transaction[1].status': 'COMPLETED',
         }
 
         self.mock_ipn_call(data)
@@ -109,3 +104,56 @@ class TestPaymentIPN(test.TestCase):
                          "IPN amounts didn't match. Payment requested %s. "
                          "Payment made %s"
                          % (payment.amount, wrong_amount))
+
+    def testMismatchedUUID(self):
+        """Test error response if invalid secret UUID"""
+
+        current_site = Site.objects.get_current()
+        incorrect_UUID = 'thisisnotthecorrectuuid'
+        kwargs = {'object_id': self.payment.id,
+                  'object_secret_uuid': incorrect_UUID}
+        internal_url = reverse('paypal-adaptive-ipn', kwargs=kwargs)
+        ipn_url = "http://%s%s" % (current_site, internal_url)
+
+        money = str(self.payment.money)
+        data = {
+            'status': 'COMPLETED',
+            'transaction_type': 'Adaptive Payment PAY',
+            'transaction[0].id': '1',
+            'transaction[0].amount': money,
+            'transaction[0].status': 'COMPLETED',
+        }
+
+        response = self.mock_ipn_call(data, ipn_url)
+
+        payment = self.get_payment()
+
+        self.assertEqual(payment.status, 'error')
+        self.assertEqual(payment.status_detail,
+                         ('IPN secret "%s" did not match db'
+                          % incorrect_UUID))
+
+        self.assertEqual(response.status_code, 400)
+
+    def test404MissingObject(self):
+        """Test 404 if missing object"""
+
+        current_site = Site.objects.get_current()
+        incorrect_UUID = 'thisisnotthecorrectuuid'
+        incorrect_object_id = 9000
+        kwargs = {'object_id': incorrect_object_id,
+                  'object_secret_uuid': incorrect_UUID}
+        internal_url = reverse('paypal-adaptive-ipn', kwargs=kwargs)
+        ipn_url = "http://%s%s" % (current_site, internal_url)
+
+        money = str(self.payment.money)
+        data = {
+            'status': 'COMPLETED',
+            'transaction_type': 'Adaptive Payment PAY',
+            'transaction[0].id': '1',
+            'transaction[0].amount': money,
+            'transaction[0].status': 'COMPLETED',
+        }
+
+        response = self.mock_ipn_call(data, ipn_url)
+        self.assertEqual(response.status_code, 404)

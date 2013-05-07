@@ -87,11 +87,7 @@ class IPN(object):
             raise IpnError('PayPal status was "%s"'
                            % request.GET.get('status'))
 
-        try:
-            self.process_transactions(request)
-        except Exception, e:
-            logger.error("Could not process transactions:" + e.message)
-            raise e
+        self.process_transactions(request)
 
         try:
             # payments and adjustments define these
@@ -197,22 +193,7 @@ class IPN(object):
         self.transactions = []
         
         transaction_nums = range(6)
-        transactions = request.POST.get('transaction')
-
-        print request.POST
-
-        pass
-
-
-        if not isinstance(transactions, list):
-            transactions = [transactions]
-
         for transaction_num in transaction_nums:
-            try:
-                transdict = transactions[transaction_num]
-                #print type(transdict)
-                #print transdict
-                transdict = simplejson.loads(transdict)
+            transdict = IPN.Transaction.slicedict(request.POST, 'transaction[%s].' % transaction_num)
+            if len(transdict) > 0:
                 self.transactions.append(IPN.Transaction(**transdict))
-            except IndexError:
-                pass
