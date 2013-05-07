@@ -9,10 +9,45 @@ as possible but we might not have the resources to perfect this project.
 Please reach out to us if you're interested in helping maintaining this
 package.
 
-Settings
+Models
+===
+
+Payment
 ---
 
-__TEST_WITH_MOCK__
+__Status__
+
+Possible values are:
+
+    'new'  # Payment only exists locally
+    'created'  # Payment exists on Paypal
+    'error'  # Something along the process has gone wrong. Check status_detail
+             # for more info.
+    'returned'  # User has returned via the Payment return_url
+    'completed'  # The Payment is complete
+    'refunded'  # The Payment is refunded
+    'canceled'  # The Payment has been canceled
+
+Preapproval
+---
+
+__Status__
+
+Possible values are:
+
+    'new'  # Preapproval only exists locally — not known to Paypal
+    'created'  # Preapproval has been saved on Paypal
+    'error'  # Something has gone wrong, check status_detail for more info
+    'returned'  # User has returned via the Preapproval return_url
+    'completed'  #
+
+The status describes
+
+Settings
+===
+
+TEST_WITH_MOCK
+---
 
 Set whether tests should be run with built-in mocking responses and requests
 or if the testing should spawn requests that hits Paypal's APIs directly.

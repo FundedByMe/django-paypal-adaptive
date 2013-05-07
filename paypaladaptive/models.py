@@ -96,10 +96,11 @@ class Payment(PaypalAdaptive):
     STATUS_CHOICES = (
         ('new', _(u'New')),  # just saved locally
         ('created', _(u'Created')),  # payment created
-        ('error', _(u'Error')),  # error occured somewhere in the process
+        ('error', _(u'Error')),  # error occurred somewhere in the process
         ('canceled', _(u'Canceled')),  # the payment has been canceled
+        ('returned', _(u'Returned')),  # user has returned via return_url
         ('completed', _(u'Completed')),  # the payment has been completed
-        ('refunded', _(u'Refunded')),  #
+        ('refunded', _(u'Refunded')),  # payment has been refunded
     )
 
     pay_key = models.CharField(_(u'paykey'), max_length=255)
@@ -242,9 +243,10 @@ class Preapproval(PaypalAdaptive):
         ('new', _(u'New')),
         ('created', _(u'Created')),
         ('error', _(u'Error')),
-        ('denied', _(u'Denied')),
+        ('canceled', _(u'Canceled')),
         ('approved', _(u'Approved')),
         ('used', _(u'Used')),
+        ('returned', _(u'Returned')),
     )
     
     valid_until_date = models.DateTimeField(_(u'valid until'),
