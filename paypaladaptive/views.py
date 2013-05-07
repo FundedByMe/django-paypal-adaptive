@@ -210,6 +210,8 @@ def ipn(request, object_id, object_secret_uuid, ipn):
         else:
             obj.status = 'completed'
 
+            # TODO: mark preapproval 'used'
+
     elif ipn.type == constants.IPN_TYPE_PREAPPROVAL:
         if obj.money != ipn.transactions[0].amount:
             obj.status = 'error'

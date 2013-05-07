@@ -39,7 +39,9 @@ Possible values are:
     'created'  # Preapproval has been saved on Paypal
     'error'  # Something has gone wrong, check status_detail for more info
     'returned'  # User has returned via the Preapproval return_url
-    'completed'  #
+    'approved'  # Preapproval is completed — ready to be used in payment
+    'canceled'  # Preapproval has been canceled
+    'used'  # Preapproval has been used in payment
 
 The status describes
 
