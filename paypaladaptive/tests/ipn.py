@@ -180,7 +180,7 @@ class TestPreapprovalIPN(test.TestCase):
         money = str(self.preapproval.money)
         data = {
             'status': 'COMPLETED',
-            'transaction_type': 'Adaptive Payment Preapproval',
+            'transaction_type': 'Adaptive Payment PREAPPROVAL',
             'transaction[0].id': '1',
             'transaction[0].amount': money,
             'transaction[0].status': 'PREAPPROVED',
@@ -200,7 +200,7 @@ class TestPreapprovalIPN(test.TestCase):
         money = str(self.preapproval.money)
         data = {
             'status': 'COMPLETED',
-            'transaction_type': 'Adaptive Payment Preapproval',
+            'transaction_type': 'Adaptive Payment PREAPPROVAL',
             'transaction[0].id': '1',
             'transaction[0].amount': money,
             'transaction[0].status': 'COMPLETED',
@@ -218,7 +218,7 @@ class TestPreapprovalIPN(test.TestCase):
 
         data = {
             'status': 'COMPLETED',
-            'transaction_type': 'Adaptive Payment Preapproval',
+            'transaction_type': 'Adaptive Payment PREAPPROVAL',
             'transaction[0].id': 1,
             'transaction[0].amount': wrong_amount,
             'transaction[0].status': 'COMPLETED',

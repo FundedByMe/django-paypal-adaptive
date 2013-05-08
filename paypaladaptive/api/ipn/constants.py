@@ -7,7 +7,7 @@ from pytz import timezone
 
 IPN_TYPE_PAYMENT = 'Adaptive Payment PAY'
 IPN_TYPE_ADJUSTMENT = 'Adjustment'
-IPN_TYPE_PREAPPROVAL = 'Adaptive Payment Preapproval'
+IPN_TYPE_PREAPPROVAL = 'Adaptive Payment PREAPPROVAL'
 
 IPN_STATUS_CREATED = 'CREATED'
 IPN_STATUS_COMPLETED = 'COMPLETED'
