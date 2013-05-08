@@ -103,7 +103,7 @@ class TestPaymentIPN(test.TestCase):
         self.assertEqual(payment.status_detail,
                          "IPN amounts didn't match. Payment requested %s. "
                          "Payment made %s"
-                         % (payment.amount, wrong_amount))
+                         % (payment.money, wrong_amount))
 
     def testMismatchedUUID(self):
         """Test error response if invalid secret UUID"""
