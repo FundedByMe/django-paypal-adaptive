@@ -16,6 +16,8 @@ def takes_ipn(function):
             logger.debug("Request was: %s" % request)
             return HttpResponseBadRequest('verify failed')
 
+        logger.debug("Incoming IPN call: " + str(request))
+
         return function(request, *args, **kwargs)
 
     return _view

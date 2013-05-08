@@ -178,8 +178,6 @@ def ipn(request, object_id, object_secret_uuid, ipn):
 
     """
 
-    logger.debug("Incoming IPN call: " + str(request))
-
     object_class = {
         constants.IPN_TYPE_PAYMENT: Payment,
         constants.IPN_TYPE_PREAPPROVAL: Preapproval,
