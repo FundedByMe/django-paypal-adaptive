@@ -168,15 +168,17 @@ def preapproval_return(request, preapproval_id, secret_uuid,
     return render_to_response(template, template_vars, context)
 
 
-@takes_ipn
-@require_POST
 @csrf_exempt
+@require_POST
 @transaction.autocommit
+@takes_ipn
 def ipn(request, object_id, object_secret_uuid, ipn):
     """
     Incoming IPN POST request from Paypal
 
     """
+
+    logger.debug("Incoming IPN call: " + str(request))
 
     object_class = {
         constants.IPN_TYPE_PAYMENT: Payment,
