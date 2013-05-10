@@ -61,7 +61,7 @@ Defaults to True. Override in your settings file like this:
 
     PAYPAL_TEST_WITH_MOCK = False
 
-Everything below is outdated.
+WARNING!! Everything below is outdated!!
 ===
 
 A trivial example for now:
