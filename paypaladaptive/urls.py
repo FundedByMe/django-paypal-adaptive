@@ -1,25 +1,34 @@
-'''
-Paypal Adaptive Payment callback URLs
+"""
+Paypal Adaptive Payment callback and IPN URLs
 
-Created on Jun 13, 2011
+"""
 
-@author: greg
-'''
-from django.conf.urls.defaults import patterns, url
-from views import payment_cancel, payment_return, payment_ipn, \
-    preapproval_cancel, preapproval_return
+from django.conf.urls import patterns, url
+
+import views
 import settings
 
 
-urlpatterns = patterns('',
-    url(r'^cancel/pay/(?P<id>\d+)/$', payment_cancel, name="paypal-adaptive-payment-cancel"),
-    url(r'^return/pay/(?P<id>\d+)/(?P<secret_uuid>\w+)/$', payment_return, name="paypal-adaptive-payment-return"),
+urlpatterns = patterns(
+    '',
 
-    url(r'^cancel/pre/(?P<id>\d+)/$', preapproval_cancel, name="paypal-adaptive-preapproval-cancel"),
-    url(r'^return/pre/(?P<id>\d+)/(?P<secret_uuid>\w+)/$', preapproval_return, name="paypal-adaptive-preapproval-return"),
+    url(r'^pay/cancel/(?P<payment_id>\d+)/$', views.payment_cancel,
+        name="paypal-adaptive-payment-cancel"),
+
+    url(r'^pay/return/(?P<payment_id>\d+)/(?P<secret_uuid>\w+)/$',
+        views.payment_return, name="paypal-adaptive-payment-return"),
+
+    url(r'^pre/cancel/(?P<preapproval_id>\d+)/$', views.preapproval_cancel,
+        name="paypal-adaptive-preapproval-cancel"),
+
+    url(r'^pre/return/(?P<preapproval_id>\d+)/(?P<secret_uuid>\w+)/$',
+        views.preapproval_return, name="paypal-adaptive-preapproval-return"),
 )
 
 if settings.USE_IPN:
-    urlpatterns += patterns('',
-        url(r'^ipn/(?P<id>\d+)/(?P<secret_uuid>\w+)/$', payment_ipn, name="paypal-adaptive-ipn"),
+    urlpatterns += patterns(
+        '',
+
+        url(r'^ipn/(?P<object_id>\d+)/(?P<object_secret_uuid>\w+)/$',
+            views.ipn, name="paypal-adaptive-ipn"),
     )
