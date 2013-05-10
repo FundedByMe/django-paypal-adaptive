@@ -27,7 +27,6 @@ class IPN(object):
 
     class Transaction(object):
         def __init__(self, **kwargs):
-            #print kwargs.get('amount', None)
             self.id = kwargs.get('id', None)
             self.status = kwargs.get('status', None)
             self.id_for_sender = kwargs.get('id_for_sender', None)

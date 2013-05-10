@@ -91,7 +91,6 @@ def payment_return(request, payment_id, payment_secret_uuid,
     return render_to_response(template, template_vars, context)
 
 
-@login_required
 @transaction.autocommit
 def preapproval_cancel(request, preapproval_id,
                        template="paypaladaptive/cancel.html"):
@@ -118,7 +117,6 @@ def preapproval_cancel(request, preapproval_id,
     return render_to_response(template, template_vars, context)
 
 
-@login_required
 @transaction.autocommit
 def preapproval_return(request, preapproval_id, secret_uuid,
                        template="paypaladaptive/return.html"):
@@ -130,12 +128,12 @@ def preapproval_return(request, preapproval_id, secret_uuid,
 
     preapproval = get_object_or_404(Preapproval, id=preapproval_id)
 
-    logger.debug("Return received for Preapproval %s" % preapproval_id)
+    logger.info("Return received for Preapproval %s" % preapproval_id)
 
-    if preapproval.status != 'created':
-        preapproval.status_detail = _(u"Expected status to be created"
-                                      u" not %s - duplicate"
-                                      u" transaction?") % preapproval.status
+    if preapproval.status not in ['created', 'approved']:
+        preapproval.status_detail = _(
+            u"Expected status to be created or approved not %s - duplicate "
+            u"transaction?") % preapproval.status
         preapproval.status = 'error'
         preapproval.save()
         return HttpResponseServerError('Unexpected error')
@@ -147,19 +145,18 @@ def preapproval_return(request, preapproval_id, secret_uuid,
         preapproval.save()
         return HttpResponseServerError('Unexpected error')
 
-    if preapproval.status != 'completed':
+    if preapproval.status != 'approved':
         preapproval.status = 'returned'
         preapproval.save()
-
-    if request.GET.get('next'):
-        next_url = request.GET.get('next')
-        return HttpResponseRedirect(next_url)
 
     if not settings.USE_IPN:
         # TODO: make PreapprovalDetails call here if not using IPN
         logger.warning("Using PreapprovalDetails is not implemented and IPN is"
                        "turned off.")
-        pass
+
+    if request.GET.get('next', False):
+        next_url = request.GET.get('next')
+        return HttpResponseRedirect(next_url)
 
     context = RequestContext(request)
     template_vars = {"is_embedded": settings.USE_EMBEDDED,
