@@ -246,3 +246,17 @@ class TestPreapprovalIPN(test.TestCase):
                          ("IPN amounts didn't match. Preapproval "
                           "requested %s. Preapproval made %s"
                           % (preapproval.money, wrong_amount)))
+
+    def testNotApproved(self):
+        """Test unapproved"""
+
+        data = self.get_valid_IPN_call(self.preapproval.money)
+        data.update({u'approved': u'false'})
+
+        self.mock_ipn_call(data)
+
+        preapproval = self.get_preapproval()
+
+        self.assertEqual(preapproval.status, 'error')
+        self.assertEqual(preapproval.status_detail,
+                         "The preapproval is not approved")

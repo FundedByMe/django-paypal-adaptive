@@ -226,7 +226,9 @@ def ipn(request, object_id, object_secret_uuid, ipn):
                 "IPN amounts didn't match. Preapproval requested %s. "
                 "Preapproval made %s"
                 % (obj.money, ipn.max_total_amount_of_all_payments))
-
+        elif not ipn.approved:
+            obj.status = 'error'
+            obj.status_detail = "The preapproval is not approved"
         else:
             obj.status = 'completed'
 
