@@ -1,2 +1,10 @@
 .pyc
 .DS_Store
+.Python
+bin
+include
+lib
+*.pyc
+.idea
+paypaladaptive/migrations/
+src
