@@ -230,7 +230,7 @@ def ipn(request, object_id, object_secret_uuid, ipn):
             obj.status = 'error'
             obj.status_detail = "The preapproval is not approved"
         else:
-            obj.status = 'completed'
+            obj.status = 'approved'
 
     obj.save()
 
