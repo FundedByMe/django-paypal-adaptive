@@ -82,11 +82,6 @@ class IPN(object):
         else:
             raise IpnError('Unknown transaction_type received: %s' % raw_type)
         
-        # check payment status
-        if request.POST.get('status', '') != 'COMPLETED':
-            raise IpnError('PayPal status was "%s"'
-                           % request.GET.get('status'))
-
         self.process_transactions(request)
 
         try:
@@ -111,18 +106,20 @@ class IPN(object):
             self.current_number_of_payments = IPN.process_int(request.POST.get('current_number_of_payments', None))
             self.current_total_amount_of_all_payments = IPN.process_money(request.POST.get('current_total_amount_of_all_payments', None))
             self.current_period_attempts = IPN.process_int(request.POST.get('current_period_attempts', None))
-            self.currencyCode = Currency(request.POST.get('currencyCode', None))
+            self.currency_code = Currency(request.POST.get('currency_code', None))
             self.date_of_month = IPN.process_int(request.POST.get('date_of_month', None))
-            self.day_of_week = IPN.process_int(request.POST.get('day_of_week', None))
+            self.day_of_week = IPN.process_int(request.POST.get('day_of_week', None), None)
             self.starting_date = IPN.process_date(request.POST.get('starting_date', None))
             self.ending_date = IPN.process_date(request.POST.get('ending_date', None))
-            self.max_total_amount_of_all_payments = IPN.process_money(request.POST.get('max_total_amount_of_all_payments', None))            
+            self.max_total_amount_of_all_payments = Money(request.POST.get('max_total_amount_of_all_payments', None),
+                                                          request.POST.get('currency_code', None))
             self.max_amount_per_payment = IPN.process_money(request.POST.get('max_amount_per_payment', None))
             self.max_number_of_payments = IPN.process_int(request.POST.get('max_number_of_payments', None))
             self.payment_period = request.POST.get('payment_period', None)
             self.pin_type = request.POST.get('pin_type', None)
         except Exception, e:
-            raise IpnError('Could not parse request: ' + e.message)
+            logger.error('Could not parse request')
+            raise e
         
         # Verify enumerations
         if self.status and self.status not in [IPN_STATUS_CREATED,
@@ -131,7 +128,8 @@ class IPN(object):
                                                IPN_STATUS_ERROR,
                                                IPN_STATUS_REVERSALERROR,
                                                IPN_STATUS_PROCESSING,
-                                               IPN_STATUS_PENDING]:
+                                               IPN_STATUS_PENDING,
+                                               IPN_STATUS_ACTIVE]:
             raise IpnError("unknown status: %s" % self.status)
         
         if (self.action_type
@@ -140,17 +138,24 @@ class IPN(object):
             raise IpnError("unknown action type: %s" % self.action_type)
 
     @classmethod
-    def process_int(cls, int_str):
+    def process_int(cls, int_str, default='null'):
         """
         Attempt to turn strings into integers (or longs if long enough.)
         Doesn't trap the ValueError so bad values raise the exception.
 
         """
 
+        val = default
+
         if int_str:
-            return int(int_str)
+            try:
+                val = int(int_str)
+            except ValueError, e:
+                if default == 'null':
+                    raise e
+
         
-        return None
+        return val
     
     @classmethod
     def process_money(cls, money_str):
@@ -191,7 +196,7 @@ class IPN(object):
         """
 
         self.transactions = []
-        
+
         transaction_nums = range(6)
         for transaction_num in transaction_nums:
             transdict = IPN.Transaction.slicedict(request.POST, 'transaction[%s].' % transaction_num)

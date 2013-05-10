@@ -209,17 +209,24 @@ def ipn(request, object_id, object_secret_uuid, ipn):
             obj.status_detail = ("IPN amounts didn't match. Payment requested "
                                  "%s. Payment made %s"
                                  % (obj.money, ipn.transactions[0].amount))
+
+        # check payment status
+        elif request.POST.get('status', '') != 'COMPLETED':
+            obj.status = 'error'
+            obj.status_detail = ('PayPal status was "%s"'
+                                 % request.POST.get('status'))
         else:
             obj.status = 'completed'
 
             # TODO: mark preapproval 'used'
-
     elif ipn.type == constants.IPN_TYPE_PREAPPROVAL:
-        if obj.money != ipn.transactions[0].amount:
+        if obj.money != ipn.max_total_amount_of_all_payments:
             obj.status = 'error'
-            obj.status_detail = ("IPN amounts didn't match. Preapproval "
-                                 "requested %s. Preapproval made %s"
-                                 % (obj.money, ipn.transactions[0].amount))
+            obj.status_detail = (
+                "IPN amounts didn't match. Preapproval requested %s. "
+                "Preapproval made %s"
+                % (obj.money, ipn.max_total_amount_of_all_payments))
+
         else:
             obj.status = 'completed'
 
