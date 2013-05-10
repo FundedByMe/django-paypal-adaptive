@@ -173,15 +173,18 @@ class Payment(PaypalAdaptive):
         # Call endpoint
         res, endpoint = self.call(api.Pay, **endpoint_kwargs)
 
-        if endpoint.paykey:
-            self.pay_key = endpoint.paykey
+        self.pay_key = endpoint.paykey
+
+        if endpoint.status == 'COMPLETED':
+            self.status = 'completed'
+        elif endpoint.paykey or endpoint.status == 'CREATED':
             self.status = 'created'
         else:
             self.status = 'error'
             
         self.save()
         
-        return self.status == 'created'
+        return self.status in ['created', 'completed']
 
     @transaction.autocommit
     def refund(self):

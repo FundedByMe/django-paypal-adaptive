@@ -13,6 +13,7 @@ from paypaladaptive.api import Receiver, ReceiverList
 from paypaladaptive.api.httpwrapper import UrlResponse
 
 from mock_url_request import MockUrlRequest
+from factories import PreapprovalFactory
 
 
 if not settings.TEST_WITH_MOCK:
@@ -97,6 +98,11 @@ class MockUrlRequestPayment(MockUrlRequest):
         assert reciever_list == self.recievers().to_dict()
 
 
+class FakePay:
+    status = 'COMPLETED'
+    paykey = 'PA-123'
+
+
 class AdaptiveTests(TestCase):
 
     def setUp(self):
@@ -138,8 +144,13 @@ class AdaptiveTests(TestCase):
         self.assertTrue(self.payment.status, "created")
         self.assertNotEqual(self.payment.pay_key, "")
 
-    # Doesn't work
-    # def test_payment_from_preapproval(self):
-    #     self.preapproval.process()
-    #     self.assertTrue(self.payment.process(self.recievers,
-    #                                          preapproval=self.preapproval))
+    @patch("paypaladaptive.models.Payment.call")
+    def test_payment_from_preapproval(self, mock_api_caller):
+        """Make sure we can create payments from Preapprovals"""
+
+        preapproval = PreapprovalFactory.create(status='approved')
+        mock_api_caller.return_value = (True, FakePay())
+
+        self.assertTrue(self.payment.process(self.recievers,
+                                             preapproval=self.preapproval))
+        self.assertEqual(self.payment.status, 'completed')
