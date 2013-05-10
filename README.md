@@ -6,6 +6,10 @@ heavy changes and not all Paypal Adaptive endpoints are covered. FundedByMe
 will help make the covering of the Pay, Preapproval and IPN endpoints as good
 as possible but we might not have the resources to perfect this project.
 
+Making Preapprovals and using them to create Payments is fully supported and
+tested as long as IPN is turned on. Creating Payments without Preapprovals
+might not work in this version.
+
 Please reach out to us if you're interested in helping maintaining this
 package.
 
