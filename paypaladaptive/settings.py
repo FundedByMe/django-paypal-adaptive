@@ -1,8 +1,3 @@
-'''
-Created on Jun 13, 2011
-
-@author: greg
-'''
 from django.conf import settings
 from money import set_default_currency
 
@@ -29,9 +24,13 @@ PAYPAL_PASSWORD = settings.PAYPAL_PASSWORD
 PAYPAL_SIGNATURE = settings.PAYPAL_SIGNATURE
 PAYPAL_EMAIL = settings.PAYPAL_EMAIL
 
+USE_IPN = getattr(settings, 'PAYPAL_USE_IPN', True)
 USE_CHAIN = getattr(settings, 'PAYPAL_USE_CHAIN', False)
 USE_EMBEDDED = getattr(settings, 'PAYPAL_USE_EMBEDDED', True)
 SHIPPING = getattr(settings, 'PAYPAL_USE_SHIPPING', False)
 
 DEFAULT_CURRENCY = getattr(settings, 'DEFAULT_CURRENCY', 'USD')
 set_default_currency(code=DEFAULT_CURRENCY)
+
+# Should tests hit Paypaladaptive or not? Defaults to using mock responses
+TEST_WITH_MOCK = getattr(settings, 'PAYPAL_TEST_WITH_MOCK', True)

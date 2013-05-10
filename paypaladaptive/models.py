@@ -45,7 +45,7 @@ class PaypalAdaptive(models.Model):
 
     money = MoneyField(_(u'money'), max_digits=6, decimal_places=2)
     created_date = models.DateTimeField(_(u'created on'), auto_now_add=True)
-    secret_uuid = UUIDField(_(u'secret UUID')) # to verify return_url
+    secret_uuid = UUIDField(_(u'secret UUID'))  # to verify return_url
     debug_request = models.TextField(_(u'raw request'), blank=True, null=True)
     debug_response = models.TextField(_(u'raw response'), blank=True,
                                       null=True)
@@ -55,8 +55,6 @@ class PaypalAdaptive(models.Model):
 
         try:
             res = endpoint.call()
-        except PaypalAdaptiveApiError, e:
-            raise e
         finally:
             self.debug_request = json.dumps(endpoint.data)
             self.debug_response = endpoint.raw_response
@@ -79,6 +77,14 @@ class PaypalAdaptive(models.Model):
         self.money.currency = value
 
     currency = property(get_currency, set_currency)
+
+    @property
+    def ipn_url(self):
+        current_site = Site.objects.get_current()
+        kwargs = {'object_id': self.id,
+                  'object_secret_uuid': self.secret_uuid}
+        ipn_url = reverse('paypal-adaptive-ipn', kwargs=kwargs)
+        return "http://%s%s" % (current_site, ipn_url)
     
     class Meta:
         abstract = True
@@ -90,10 +96,11 @@ class Payment(PaypalAdaptive):
     STATUS_CHOICES = (
         ('new', _(u'New')),  # just saved locally
         ('created', _(u'Created')),  # payment created
-        ('error', _(u'Error')),  # error occured somewhere in the process
+        ('error', _(u'Error')),  # error occurred somewhere in the process
         ('canceled', _(u'Canceled')),  # the payment has been canceled
+        ('returned', _(u'Returned')),  # user has returned via return_url
         ('completed', _(u'Completed')),  # the payment has been completed
-        ('refunded', _(u'Refunded')),  #
+        ('refunded', _(u'Refunded')),  # payment has been refunded
     )
 
     pay_key = models.CharField(_(u'paykey'), max_length=255)
@@ -175,15 +182,18 @@ class Payment(PaypalAdaptive):
         # Call endpoint
         res, endpoint = self.call(api.Pay, **endpoint_kwargs)
 
-        if endpoint.paykey:
-            self.pay_key = endpoint.paykey
+        self.pay_key = endpoint.paykey
+
+        if endpoint.status == 'COMPLETED':
+            self.status = 'completed'
+        elif endpoint.paykey or endpoint.status == 'CREATED':
             self.status = 'created'
         else:
             self.status = 'error'
             
         self.save()
         
-        return self.status == 'created'
+        return self.status in ['created', 'completed']
 
     @transaction.autocommit
     def refund(self):
@@ -245,9 +255,10 @@ class Preapproval(PaypalAdaptive):
         ('new', _(u'New')),
         ('created', _(u'Created')),
         ('error', _(u'Error')),
-        ('denied', _(u'Denied')),
+        ('canceled', _(u'Canceled')),
         ('approved', _(u'Approved')),
         ('used', _(u'Used')),
+        ('returned', _(u'Returned')),
     )
     
     valid_until_date = models.DateTimeField(_(u'valid until'),
@@ -299,6 +310,9 @@ class Preapproval(PaypalAdaptive):
             return_cancel = "%s?next=%s" % (self.cancel_url,
                                             kwargs.pop('cancel'))
             endpoint_kwargs.update({'cancel_url': return_cancel})
+
+        if settings.USE_IPN:
+            endpoint_kwargs.update({'ipn_url': self.ipn_url})
 
         # Append extra arguments
         endpoint_kwargs.update(**kwargs)

@@ -2,7 +2,6 @@
 
 from datetime import datetime, timedelta
 import logging
-import urllib2
 
 from django.utils import simplejson as json
 
@@ -12,21 +11,9 @@ from paypaladaptive import settings
 
 from errors import *
 from datatypes import ReceiverList
+from httpwrapper import UrlRequest
 
 logger = logging.getLogger(__name__)
-
-
-class UrlRequest(object):
-    def run(self, url, data=None, headers=None):
-        if headers is None:
-            headers = {}
-
-        request = urllib2.Request(url, data=data, headers=headers)
-
-        try:
-            return urllib2.urlopen(request).read()
-        except urllib2.URLError, e:
-            return e.read()
 
 
 class PaypalAdaptiveEndpoint(object):
@@ -58,10 +45,10 @@ class PaypalAdaptiveEndpoint(object):
         self.headers.update(headers)
 
     def call(self):
-        self.raw_response = UrlRequest().run(self.url,
-                                             data=json.dumps(self.data),
-                                             headers=self.headers)
-        self.response = json.loads(self.raw_response)
+        request = UrlRequest().call(self.url, data=json.dumps(self.data),
+                                    headers=self.headers)
+        self.raw_response = request.response
+        self.response = json.loads(request.response)
 
         logger.debug('headers are: %s' % str(self.headers))
         logger.debug('request is: %s' % str(self.data))
@@ -86,8 +73,8 @@ class PaypalAdaptiveEndpoint(object):
 
         """
 
-        raise PaypalAdaptiveApiError("Endpoint class needs to override the "
-                                     "prepare_data method.")
+        raise NotImplementedError("Endpoint class needs to override the "
+                                  "prepare_data method.")
 
     def pretty_response(self):
         print json.dumps(json.loads(self.raw_response), indent=4)

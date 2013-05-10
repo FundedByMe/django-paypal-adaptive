@@ -4,70 +4,40 @@ from django.test import TestCase
 from django.core.urlresolvers import reverse
 from django.contrib.sites.models import Site
 
-from money import Money
+from money.Money import Money
+from mock import patch
+
 from paypaladaptive import settings
 from paypaladaptive.models import Preapproval, Payment
 from paypaladaptive.api import Receiver, ReceiverList
-from mock import patch
+from paypaladaptive.api.httpwrapper import UrlResponse
+
+from mock_url_request import MockUrlRequest
+from factories import PreapprovalFactory
 
 
-class MockUrlRequest(object):
-    def run(self, url, data=None, headers=None):
-        self._assert_valid_url(url)
-        self._assert_valid_data(json.loads(data))
-        self._assert_valid_headers(headers)
-        return self._response()
+if not settings.TEST_WITH_MOCK:
+    class FakePatch:
+        def __init__(self, *args, **kwargs):
+            pass
 
-    def _response(self):
-        """ Define JSON string returned by paypal"""
-        raise RuntimeError
+        def __call__(self, f):
+            return f
 
-    def _assert_valid_url(self, url):
-        valid_url = "%s%s" % (settings.PAYPAL_ENDPOINT, self._endpoint_name())
-        assert url == valid_url
-
-    def _endpoint_name(self):
-        """"Name of API call to paypal"""
-        raise RuntimeError
-
-    def _assert_valid_data(self, data):
-        self._assert_valid_return_url(data["returnUrl"])
-        self._assert_valid_cancel_url(data["cancelUrl"])
-        assert data["requestEnvelope"] == {"errorLanguage": "en_US"}
-
-    def _assert_valid_headers(self, headers):
-        self._assert_valid_header(headers, 'X-PAYPAL-SECURITY-SIGNATURE',
-                                  settings.PAYPAL_SIGNATURE)
-        self._assert_valid_header(headers, 'X-PAYPAL-REQUEST-DATA-FORMAT',
-                                  'JSON')
-        self._assert_valid_header(headers, 'X-PAYPAL-APPLICATION-ID',
-                                  settings.PAYPAL_APPLICATION_ID)
-        self._assert_valid_header(headers, 'X-PAYPAL-SECURITY-USERID',
-                                  settings.PAYPAL_USERID)
-        self._assert_valid_header(headers, 'X-PAYPAL-SECURITY-PASSWORD',
-                                  settings.PAYPAL_PASSWORD)
-        self._assert_valid_header(headers, 'X-PAYPAL-RESPONSE-DATA-FORMAT',
-                                  'JSON')
-
-    def _assert_valid_header(self, headers, name, value):
-        assert headers[name] == value
-
-    def _assert_valid_reversed_url(self, url, kwargs, template_name):
-        """"Helper function for return and cancel urls"""
-        current_site = Site.objects.get_current()
-        return_url = reverse(template_name, kwargs=kwargs)
-        assert url == "http://%s%s" % (current_site, return_url)
+    patch = FakePatch
 
 
 class MockUrlRequestPreapproval(MockUrlRequest):
 
-    def _response(self):
-        return """{\"responseEnvelope\":
-                {\"timestamp\": \"2013-04-23T02:03:21.737-07:00\",
-                 \"ack\": \"Success\",
-                 \"correlationId\": \"877ca0ec3b8db\",
-                 \"build\": \"5710487\"},
-                \"preapprovalKey\": \"PA-8X048594NU8990615\"}"""
+    def _set_response(self):
+        data = """{\"responseEnvelope\":
+                   {\"timestamp\": \"2013-04-23T02:03:21.737-07:00\",
+                    \"ack\": \"Success\",
+                    \"correlationId\": \"877ca0ec3b8db\",
+                    \"build\": \"5710487\"},
+                   \"preapprovalKey\": \"PA-8X048594NU8990615\"}"""
+        self._response = UrlResponse(data, {}, 200)
+        return self
 
     def _endpoint_name(self):
         return "Preapproval"
@@ -95,14 +65,15 @@ class MockUrlRequestPreapproval(MockUrlRequest):
 
 
 class MockUrlRequestPayment(MockUrlRequest):
-    def _response(self):
-        return """{\"responseEnvelope\":
-                {\"timestamp\":\"2013-04-23T07:45:36.456-07:00\",
-                 \"ack\":\"Success\",
-                 \"correlationId\":\"0d9ee9c8aab09\",
-                 \"build\":\"5710487\"},
-                \"payKey\":\"AP-7KL74713BP0955948\",
-                \"paymentExecStatus\":\"CREATED\"}"""
+    def _set_response(self):
+        data = """{\"responseEnvelope\":
+                   {\"timestamp\":\"2013-04-23T07:45:36.456-07:00\",
+                    \"ack\":\"Success\",
+                    \"correlationId\":\"0d9ee9c8aab09\",
+                    \"build\":\"5710487\"},
+                   \"payKey\":\"AP-7KL74713BP0955948\",
+                   \"paymentExecStatus\":\"CREATED\"}"""
+        self._response = UrlResponse(data, {}, 200)
 
     def _endpoint_name(self):
         return "Pay"
@@ -125,6 +96,11 @@ class MockUrlRequestPayment(MockUrlRequest):
 
     def _assert_valid_recievers_list(self, reciever_list):
         assert reciever_list == self.recievers().to_dict()
+
+
+class FakePay:
+    status = 'COMPLETED'
+    paykey = 'PA-123'
 
 
 class AdaptiveTests(TestCase):
@@ -168,8 +144,13 @@ class AdaptiveTests(TestCase):
         self.assertTrue(self.payment.status, "created")
         self.assertNotEqual(self.payment.pay_key, "")
 
-    # Doesn't work
-    # def test_payment_from_preapproval(self):
-    #     self.preapproval.process()
-    #     self.assertTrue(self.payment.process(self.recievers,
-    #                                          preapproval=self.preapproval))
+    @patch("paypaladaptive.models.Payment.call")
+    def test_payment_from_preapproval(self, mock_api_caller):
+        """Make sure we can create payments from Preapprovals"""
+
+        preapproval = PreapprovalFactory.create(status='approved')
+        mock_api_caller.return_value = (True, FakePay())
+
+        self.assertTrue(self.payment.process(self.recievers,
+                                             preapproval=self.preapproval))
+        self.assertEqual(self.payment.status, 'completed')
