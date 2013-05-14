@@ -148,14 +148,18 @@ class Payment(PaypalAdaptive):
             return_next = "%s?next=%s" % (self.return_url, kwargs.pop('next'))
             endpoint_kwargs.update({'return_url': return_next})
 
+        # Update cancel_url
         if 'cancel' in kwargs:
             return_cancel = "%s?next=%s" % (self.cancel_url,
                                             kwargs.pop('cancel'))
             endpoint_kwargs.update({'cancel_url': return_cancel})
 
+        # Set ipn_url
+        if settings.USE_IPN:
+            endpoint_kwargs.update({'ipn_url': self.ipn_url})
+
         # Append extra arguments
         endpoint_kwargs.update(**kwargs)
-
 
         # Validate type of receivers and check ReceiverList has primary,
         # otherwise assign first
