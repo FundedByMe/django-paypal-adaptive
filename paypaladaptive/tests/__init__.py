@@ -1,3 +1,3 @@
 from tests import *
 from ipn import TestPaymentIPN, TestPreapprovalIPN
-from return_urls import TestPreapprovalReturnURL
+from preapproval_return_url import TestPreapprovalReturnURL
