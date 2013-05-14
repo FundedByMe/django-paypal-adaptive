@@ -57,19 +57,19 @@ def payment_cancel(request, payment_id, payment_secret_uuid,
     return render(request, template, template_vars)
 
 
-@login_required
 @transaction.autocommit
-def payment_return(request, payment_id, payment_secret_uuid,
+def payment_return(request, payment_id, secret_uuid,
                    template="paypaladaptive/return.html"):
     """
-    Incoming return from paypal process (note this is a return to the site, not
-    a returned payment)
+    Incoming return from paypal process. Note that this is a user returning to
+    the site and not a returned payment.
+
     """
 
     logger.debug("Return received for Payment %s" % payment_id)
 
     payment = get_object_or_404(Payment, id=payment_id,
-                                secret_uuid=payment_secret_uuid)
+                                secret_uuid=secret_uuid)
 
     if payment.status not in ['created', 'completed']:
         payment.status_detail = _(u"Expected status to be created or "
@@ -79,9 +79,9 @@ def payment_return(request, payment_id, payment_secret_uuid,
         payment.save()
         return HttpResponseServerError('Unexpected error')
 
-    elif payment_secret_uuid != payment.secret_uuid:
+    elif secret_uuid != payment.secret_uuid:
         payment.status_detail = (_(u"BuyReturn secret \"%s\" did not match")
-                                 % payment_secret_uuid)
+                                 % secret_uuid)
         payment.status = 'error'
         payment.save()
         return HttpResponseServerError('Unexpected error')
@@ -94,8 +94,7 @@ def payment_return(request, payment_id, payment_secret_uuid,
         logger.warning("Using PaymentDetails is not implemented and IPN is"
                        "turned off.")
         # TODO: make PaymentDetails call here if not using IPN
-        pass
-        
+
     template_vars = {"is_embedded": settings.USE_EMBEDDED}
     return render(request, template, template_vars)
 
@@ -153,10 +152,6 @@ def preapproval_return(request, preapproval_id, secret_uuid,
         # TODO: make PreapprovalDetails call here if not using IPN
         logger.warning("Using PreapprovalDetails is not implemented and IPN is"
                        "turned off.")
-
-    if request.GET.get('next', False):
-        next_url = request.GET.get('next')
-        return HttpResponseRedirect(next_url)
 
     template_vars = {"is_embedded": settings.USE_EMBEDDED,
                      "preapproval": preapproval, }

@@ -12,10 +12,9 @@ class TestPreapprovalReturnURL(TestCase):
     def get_preapproval(self):
         return Preapproval.objects.get(pk=self.preapproval.pk)
 
-    def hitReturnUrl(self, url=None):
+    def hitReturnUrl(self):
         data = {'next': '/'}
         client = Client()
-        url = self.preapproval.return_url if url is None else url
         return client.get(self.preapproval.return_url, data=data, follow=False)
 
     def testPassing(self):
@@ -32,7 +31,6 @@ class TestPreapprovalReturnURL(TestCase):
 
         self.assertEqual(preapproval.status_detail, '')
         self.assertEqual(preapproval.status, 'returned')
-
 
     def testStatusAlreadyApproved(self):
         """
