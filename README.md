@@ -31,7 +31,7 @@ Sync the database:
     
     $ python manage.py syncdb
     
-Or if you're using South:
+Or if you're using __South__ you might want to add an initial migration for future changes:
     
     $ python manage.py schemamigration paypaladaptive --initial
     $ python manage.py syncdb --migrate
