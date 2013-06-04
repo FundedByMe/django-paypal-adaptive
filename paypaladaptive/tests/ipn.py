@@ -7,6 +7,7 @@ from django.core.urlresolvers import reverse
 
 from money.Money import Money
 import mock
+import urlparse
 
 from paypaladaptive.models import Payment, Preapproval
 from paypaladaptive.api.httpwrapper import UrlRequest, UrlResponse
@@ -76,8 +77,11 @@ class TestPaymentIPN(test.TestCase):
         }
 
         self.mock_ipn_call(data)
-        qs = urlencode(data)
-        self.assertEqual(MockIPNVerifyRequest.data, qs)
+
+        verification_data = urlparse.parse_qs(MockIPNVerifyRequest.data)
+
+        for k, v in data.iteritems():
+            self.assertEqual([v], verification_data[k])
 
 
     def testMismatchedAmounts(self):
@@ -195,9 +199,9 @@ class TestPreapprovalIPN(test.TestCase):
             u'pin_type': u'NOT_REQUIRED',
             u'charset': u'windows-1252',
             u'test_ipn': u'1',
-            u'currency_code': money.currency,
+            u'currency_code': str(money.currency),
             u'current_period_attempts': u'0',
-            u'max_total_amount_of_all_payments': money.amount,
+            u'max_total_amount_of_all_payments': str(money.amount),
             u'approved': u'true'
         }
 
@@ -218,17 +222,16 @@ class TestPreapprovalIPN(test.TestCase):
     @mock.patch('paypaladaptive.api.ipn.endpoints.UrlRequest',
                 MockIPNVerifyRequest)
     def testVerificationCall(self):
-        # TODO: bring back this test
         """Test that the verification call is made with correct params"""
 
-        data = OrderedDict(self.get_valid_IPN_call(self.preapproval.money))
-        qs = urlencode(data)
+        data = self.get_valid_IPN_call(self.preapproval.money)
 
         self.mock_ipn_call(data)
 
-        # qs params don't preserver order, might be due to python dicts
-        #self.assertEqual(MockIPNVerifyRequest.data, qs)
+        verification_data = urlparse.parse_qs(MockIPNVerifyRequest.data)
 
+        for k, v in data.iteritems():
+            self.assertEqual([v], verification_data[k])
 
     def testMismatchedAmounts(self):
         """Test mismatching amounts"""
