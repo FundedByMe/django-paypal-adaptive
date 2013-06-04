@@ -13,6 +13,29 @@ might not work in this version.
 Please reach out to us if you're interested in helping maintaining this
 package.
 
+Installation
+============
+
+Install package from PyPI:
+
+    pip install django-paypal-adaptive
+    
+Add to your project's `INSTALLED_APPS` setting:
+
+    INSTALLED_APPS = (
+        …
+        'paypaladaptive',
+    )
+
+Sync the database:
+    
+    $ python manage.py syncdb
+    
+Or if you're using South:
+    
+    $ python manage.py schemamigration paypaladaptive --initial
+    $ python manage.py syncdb --migrate
+
 Models
 ===
 
