@@ -58,7 +58,10 @@ class IPN(object):
     def __init__(self, request):
         # verify that the request is paypal's
         url = '%s?cmd=_notify-validate' % settings.PAYPAL_PAYMENT_HOST
-        data = urllib.urlencode(request.POST.copy())
+        post_data = {}
+        for k, v in request.POST.copy().iteritems():
+            post_data[k] = unicode(v).encode('utf-8')
+        data = urllib.urlencode(post_data)
         verify_request = UrlRequest().call(url, data=data)
 
         # check code

@@ -259,3 +259,11 @@ class TestPreapprovalIPN(test.TestCase):
         self.assertEqual(preapproval.status, 'error')
         self.assertEqual(preapproval.status_detail,
                          "The preapproval is not approved")
+
+    def testUnicodeInMemo(self):
+        """Test with Unicode characters in the memo field."""
+
+        data = self.get_valid_IPN_call(self.preapproval.money)
+        data.update({u'memo': u"v\ufffdrldens b\ufffdsta app"})
+
+        self.mock_ipn_call(data)
