@@ -1,0 +1,6 @@
+language: python
+python:
+  - "2.7"
+install: "pip install -r requirements_test.txt --use-mirrors"
+# command to run tests
+script: python paypaladaptive-testrunner/runtests.py paypaladaptive paypaladaptive
