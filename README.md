@@ -3,17 +3,14 @@ Django Paypal Adaptive
 
 [![Build Status](https://travis-ci.org/FundedByMe/django-paypal-adaptive.png?branch=master)](https://travis-ci.org/FundedByMe/django-paypal-adaptive)
 
-This is not a stable repository. The API and the modules will be subject to
-heavy changes and not all Paypal Adaptive endpoints are covered. FundedByMe
+The API and the modules in this repository might be subject to smaller
+changes and not all Paypal Adaptive endpoints are covered. FundedByMe
 will help make the covering of the Pay, Preapproval and IPN endpoints as good
 as possible but we might not have the resources to perfect this project.
 
-Making Preapprovals and using them to create Payments is fully supported and
-tested as long as IPN is turned on. Creating Payments without Preapprovals
-might not work in this version.
-
-Please reach out to us if you're interested in helping maintaining this
-package.
+Making Preapprovals and using them to create Payments is fully supported
+together with Paypal's IPN push API. Please reach out to us if you're
+interested in helping maintaining this package.
 
 Installation
 ============
