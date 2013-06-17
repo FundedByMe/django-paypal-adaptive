@@ -98,7 +98,7 @@ class TestPaymentIPN(test.TestCase):
 
         self.assertEqual(payment.status, 'completed')
 
-    def testDuplicateCalls(self):
+    def testSequenceCalls(self):
         """Test two valid IPN calls being received in sequence"""
 
         self.testPasses()
@@ -238,6 +238,12 @@ class TestPreapprovalIPN(test.TestCase):
         preapproval = self.get_preapproval()
 
         self.assertEqual(preapproval.status, 'approved')
+
+    def testSequenceCalls(self):
+        """Test two valid IPN calls being received in sequence"""
+
+        self.testPasses()
+        self.testPasses()
 
     @mock.patch('paypaladaptive.api.ipn.endpoints.UrlRequest',
                 MockIPNVerifyRequest)
