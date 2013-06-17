@@ -61,11 +61,9 @@ class TestPaymentIPN(test.TestCase):
 
         return c.post(url, data=data)
 
-    def testVerificationCall(self):
-        """Test that the verification call is made with correct params"""
-
-        money = str(self.payment.money)
-        data = {
+    def get_valid_IPN_data(self, money):
+        money = str(money)
+        return {
             'status': 'COMPLETED',
             'transaction_type': 'Adaptive Payment PAY',
             'transaction[0].id': '1',
@@ -73,6 +71,10 @@ class TestPaymentIPN(test.TestCase):
             'transaction[0].status': 'COMPLETED',
         }
 
+    def testVerificationCall(self):
+        """Test that the verification call is made with correct params"""
+
+        data = self.get_valid_IPN_data(self.payment.money)
         self.mock_ipn_call(data)
 
         verification_data = urlparse.parse_qs(MockIPNVerifyRequest.data)
@@ -86,22 +88,21 @@ class TestPaymentIPN(test.TestCase):
     def testPasses(self):
         """Test valid IPN call"""
 
-        money = str(self.payment.money)
-        data = {
-            'status': 'COMPLETED',
-            'transaction_type': 'Adaptive Payment PAY',
-            'transaction[0].id': '1',
-            'transaction[0].amount': money,
-            'transaction[0].status': 'COMPLETED',
-        }
-
+        data = self.get_valid_IPN_data(self.payment.money)
         response = self.mock_ipn_call(data)
+
         self.assertEqual(response.status_code, 204)
         self.assertEqual(response.content, '')
 
         payment = self.get_payment()
 
         self.assertEqual(payment.status, 'completed')
+
+    def testDuplicateCalls(self):
+        """Test two valid IPN calls being received in sequence"""
+
+        self.testPasses()
+        self.testPasses()
 
     def testMismatchedAmounts(self):
         """Test mismatching amounts"""
