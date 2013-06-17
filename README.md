@@ -1,6 +1,8 @@
 Django Paypal Adaptive
 ===
 
+[![Build Status](https://travis-ci.org/FundedByMe/django-paypal-adaptive.png?branch=master)](https://travis-ci.org/FundedByMe/django-paypal-adaptive)
+
 This is not a stable repository. The API and the modules will be subject to
 heavy changes and not all Paypal Adaptive endpoints are covered. FundedByMe
 will help make the covering of the Pay, Preapproval and IPN endpoints as good
