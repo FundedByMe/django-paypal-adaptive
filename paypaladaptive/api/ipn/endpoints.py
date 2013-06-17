@@ -66,8 +66,7 @@ class IPN(object):
 
         # check code
         if verify_request.code != 200:
-            raise IpnError('PayPal response code was %s'
-                           % verify_request.code)
+            raise IpnError('PayPal response code was %s' % verify_request.code)
 
         # check response
         raw_response = verify_request.response

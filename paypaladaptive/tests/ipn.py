@@ -4,13 +4,17 @@ from collections import OrderedDict
 import django.test as test
 from django.contrib.sites.models import Site
 from django.core.urlresolvers import reverse
+from django.http import HttpRequest
 
 from money.Money import Money
 import mock
 import urlparse
 
+from paypaladaptive.api.ipn import IPN
 from paypaladaptive.models import Payment, Preapproval
 from paypaladaptive.api.httpwrapper import UrlRequest, UrlResponse
+from paypaladaptive.api.errors import IpnError
+
 from factories import PreapprovalFactory, PaymentFactory
 
 
@@ -29,6 +33,22 @@ class MockIPNVerifyRequestInvalid(UrlRequest):
         return self
 
 
+class MockIPNVerifyRequestFail(UrlRequest):
+    data = None
+    def call(self, url, data=None, headers=None):
+        self.data = data
+        self._response = UrlResponse(data='invalid', meta={}, code=None)
+        return self
+
+
+class MockIPNVerifyRequestInvalidCode(UrlRequest):
+    data = None
+    def call(self, url, data=None, headers=None):
+        self.data = data
+        self._response = UrlResponse(data='VERIFIED', meta={}, code=500)
+        return self
+
+
 class TestPaymentIPN(test.TestCase):
     def setUp(self):
         self.payment = PaymentFactory.create(status='created')
@@ -40,6 +60,25 @@ class TestPaymentIPN(test.TestCase):
         url = url if url is not None else self.payment.ipn_url
 
         return c.post(url, data=data)
+
+    def testVerificationCall(self):
+        """Test that the verification call is made with correct params"""
+
+        money = str(self.payment.money)
+        data = {
+            'status': 'COMPLETED',
+            'transaction_type': 'Adaptive Payment PAY',
+            'transaction[0].id': '1',
+            'transaction[0].amount': money,
+            'transaction[0].status': 'COMPLETED',
+        }
+
+        self.mock_ipn_call(data)
+
+        verification_data = urlparse.parse_qs(MockIPNVerifyRequest.data)
+
+        for k, v in data.iteritems():
+            self.assertEqual([v], verification_data[k])
 
     def get_payment(self):
         return Payment.objects.get(pk=self.payment.pk)
@@ -63,26 +102,6 @@ class TestPaymentIPN(test.TestCase):
         payment = self.get_payment()
 
         self.assertEqual(payment.status, 'completed')
-
-    def testVerificationCall(self):
-        """Test that the verification call is made with correct params"""
-
-        money = str(self.payment.money)
-        data = {
-            'status': 'COMPLETED',
-            'transaction_type': 'Adaptive Payment PAY',
-            'transaction[0].id': '1',
-            'transaction[0].amount': money,
-            'transaction[0].status': 'COMPLETED',
-        }
-
-        self.mock_ipn_call(data)
-
-        verification_data = urlparse.parse_qs(MockIPNVerifyRequest.data)
-
-        for k, v in data.iteritems():
-            self.assertEqual([v], verification_data[k])
-
 
     def testMismatchedAmounts(self):
         """Test mismatching amounts"""
@@ -270,3 +289,35 @@ class TestPreapprovalIPN(test.TestCase):
         data.update({u'memo': u"v\ufffdrldens b\ufffdsta app"})
 
         self.mock_ipn_call(data)
+
+
+class TestIPNVerification(test.TestCase):
+    def setUp(self):
+        self.request = HttpRequest()
+
+    @mock.patch('paypaladaptive.api.ipn.endpoints.UrlRequest',
+                MockIPNVerifyRequestFail)
+    def testVerificationNoneCode(self):
+        with self.assertRaises(IpnError) as context:
+            IPN(self.request)
+
+        self.assertEqual(context.exception.message,
+                         'PayPal response code was None')
+
+    @mock.patch('paypaladaptive.api.ipn.endpoints.UrlRequest',
+                MockIPNVerifyRequestInvalidCode)
+    def testVerificationCodeInvalid(self):
+        with self.assertRaises(IpnError) as context:
+            IPN(self.request)
+
+        self.assertEqual(context.exception.message,
+                         'PayPal response code was 500')
+
+    @mock.patch('paypaladaptive.api.ipn.endpoints.UrlRequest',
+                MockIPNVerifyRequestInvalid)
+    def testVerificationMessageInvalid(self):
+        with self.assertRaises(IpnError) as context:
+            IPN(self.request)
+
+        self.assertEqual(context.exception.message,
+                         'PayPal response was "invalid"')
