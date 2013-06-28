@@ -188,7 +188,21 @@ class Payment(PaypalAdaptive):
 
         self.pay_key = endpoint.paykey
 
-        if endpoint.status == 'COMPLETED':
+        if endpoint.status == 'ERROR':
+            self.status = 'error'
+            if 'payErrorList' in endpoint.response:
+                if 'payError' in endpoint.response['payErrorList']:
+                    payError = endpoint.response[
+                        'payErrorList']['payError'][0]['error']
+                    self.status_detail = "%s %s: %s" % (
+                        payError['severity'],
+                        payError['errorId'],
+                        payError['message'])
+                else:
+                    self.status_detail = json.dumps(
+                        endpoint.response.payErrorList)
+
+        elif endpoint.status == 'COMPLETED':
             self.status = 'completed'
         elif endpoint.paykey or endpoint.status == 'CREATED':
             self.status = 'created'
