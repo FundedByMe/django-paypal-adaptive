@@ -1,8 +1,4 @@
-import json
-
 from django.test import TestCase
-from django.core.urlresolvers import reverse
-from django.contrib.sites.models import Site
 
 from money.Money import Money
 from mock import patch
