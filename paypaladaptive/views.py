@@ -106,11 +106,11 @@ def preapproval_cancel(request, preapproval_id,
 
     logger.debug("Cancellation received for Preapproval %s" % preapproval_id)
 
-    preapproval = get_object_or_404(Preapproval, id=preapproval_id)
+    get_object_or_404(Preapproval, id=preapproval_id)
 
-    api.CancelPreapproval(preapproval.preapproval_key)
-    preapproval.status = 'canceled'
-    preapproval.save()
+    # api.CancelPreapproval(preapproval.preapproval_key)
+    # preapproval.status = 'canceled'
+    # preapproval.save()
 
     template_vars = {"is_embedded": settings.USE_EMBEDDED}
     return render(request, template, template_vars)
@@ -216,11 +216,19 @@ def ipn(request, object_id, object_secret_uuid, ipn):
                 "IPN amounts didn't match. Preapproval requested %s. "
                 "Preapproval made %s"
                 % (obj.money, ipn.max_total_amount_of_all_payments))
+        elif ipn.status == constants.IPN_STATUS_CANCELED:
+            obj.status = 'canceled'
+            obj.status_detail = 'Cancellation received via IPN'
         elif not ipn.approved:
             obj.status = 'error'
             obj.status_detail = "The preapproval is not approved"
         else:
             obj.status = 'approved'
+    else:
+        logger.warning(
+            'No action found for IPN Type "%s" with status "%s" (id: "%s", '
+            'secret_uuid: %s)'
+            % (ipn.type, ipn.status, obj.id, obj.secret_uuid))
 
     obj.save()
 

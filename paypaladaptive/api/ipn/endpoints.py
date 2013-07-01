@@ -123,14 +123,17 @@ class IPN(object):
             raise e
         
         # Verify enumerations
-        if self.status and self.status not in [IPN_STATUS_CREATED,
-                                               IPN_STATUS_COMPLETED,
-                                               IPN_STATUS_INCOMPLETE,
-                                               IPN_STATUS_ERROR,
-                                               IPN_STATUS_REVERSALERROR,
-                                               IPN_STATUS_PROCESSING,
-                                               IPN_STATUS_PENDING,
-                                               IPN_STATUS_ACTIVE]:
+        allowed_statuses = [IPN_STATUS_CREATED,
+                            IPN_STATUS_COMPLETED,
+                            IPN_STATUS_INCOMPLETE,
+                            IPN_STATUS_ERROR,
+                            IPN_STATUS_REVERSALERROR,
+                            IPN_STATUS_PROCESSING,
+                            IPN_STATUS_PENDING,
+                            IPN_STATUS_ACTIVE,
+                            IPN_STATUS_CANCELED]
+
+        if self.status and self.status not in allowed_statuses:
             raise IpnError("unknown status: %s" % self.status)
         
         if (self.action_type

@@ -1,6 +1,3 @@
-from urllib import urlencode
-from collections import OrderedDict
-
 import django.test as test
 from django.contrib.sites.models import Site
 from django.core.urlresolvers import reverse
@@ -12,41 +9,16 @@ import urlparse
 
 from paypaladaptive.api.ipn import IPN
 from paypaladaptive.models import Payment, Preapproval
-from paypaladaptive.api.httpwrapper import UrlRequest, UrlResponse
 from paypaladaptive.api.errors import IpnError
 
 from factories import PreapprovalFactory, PaymentFactory
+from helpers import (MockIPNVerifyRequest,
+                     MockIPNVerifyRequestFail,
+                     MockIPNVerifyRequestInvalid,
+                     MockIPNVerifyRequestInvalidCode,
+                     mock_ipn_call)
 
 
-class MockIPNVerifyRequest(UrlRequest):
-    def call(self, url, data=None, headers=None):
-        MockIPNVerifyRequest.data = data
-        self._response = UrlResponse(data='VERIFIED', meta={}, code=200)
-        return self
-
-
-class MockIPNVerifyRequestInvalid(UrlRequest):
-    data = None
-    def call(self, url, data=None, headers=None):
-        self.data = data
-        self._response = UrlResponse(data='invalid', meta={}, code=200)
-        return self
-
-
-class MockIPNVerifyRequestFail(UrlRequest):
-    data = None
-    def call(self, url, data=None, headers=None):
-        self.data = data
-        self._response = UrlResponse(data='invalid', meta={}, code=None)
-        return self
-
-
-class MockIPNVerifyRequestInvalidCode(UrlRequest):
-    data = None
-    def call(self, url, data=None, headers=None):
-        self.data = data
-        self._response = UrlResponse(data='VERIFIED', meta={}, code=500)
-        return self
 
 
 class TestPaymentIPN(test.TestCase):
@@ -188,13 +160,9 @@ class TestPreapprovalIPN(test.TestCase):
     def setUp(self):
         self.preapproval = PreapprovalFactory.create(status='created')
 
-    @mock.patch('paypaladaptive.api.ipn.endpoints.UrlRequest',
-                MockIPNVerifyRequest)
     def mock_ipn_call(self, data, url=None):
-        c = test.Client()
         url = url if url is not None else self.preapproval.ipn_url
-
-        return c.post(url, data=data)
+        return mock_ipn_call(data, url)
 
     def get_preapproval(self):
         return Preapproval.objects.get(pk=self.preapproval.pk)
