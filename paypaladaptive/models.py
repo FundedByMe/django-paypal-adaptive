@@ -120,7 +120,7 @@ class Payment(PaypalAdaptive):
     @property
     def cancel_url(self):
         current_site = Site.objects.get_current()
-        kwargs = {'payment_id': self.id}
+        kwargs = {'payment_id': self.id, 'secret_uuid': self.secret_uuid}
         cancel_url = reverse('paypal-adaptive-payment-cancel', kwargs=kwargs)
         return "http://%s%s" % (current_site, cancel_url)
 
