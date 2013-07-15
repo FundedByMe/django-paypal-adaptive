@@ -73,10 +73,41 @@ Possible values are:
 The status describes
 
 Settings
-===
+========
 
-TEST_WITH_MOCK
----
+django.conf.settings.PAYPAL_APPLICATION_ID
+------------------------------------------
+
+Your Paypal application ID. Will default to `APP-80W284485P519543T` if 
+`DEBUG` is set to `True`.
+
+django.conf.settings.PAYPAL_USERID
+----------------------------------
+
+Paypal User ID
+
+django.conf.settings.PAYPAL_PASSWORD
+----------------------------------
+
+Paypal password
+
+django.conf.settings.PAYPAL_SIGNATURE
+----------------------------------
+
+Paypal signature
+
+django.conf.settings.PAYPAL_EMAIL
+----------------------------------
+
+Paypal Email
+
+django.conf.settings.DEFAULT_CURRENCY
+----------------------------------
+
+Used by python-money, will default to USD
+
+django.conf.settings.PAYPAL_TEST_WITH_MOCK
+-----------------------------------------
 
 Set whether tests should be run with built-in mocking responses and requests
 or if the testing should spawn requests that hits Paypal's APIs directly.
@@ -84,7 +115,25 @@ Defaults to True. Override in your settings file like this:
 
     PAYPAL_TEST_WITH_MOCK = False
 
+Run tests
+=========
+
+To run the tests, first install the test requirements:
+
+    $ [sudo] pip install -r requirements_test.txt --use-mirrors
+    
+The script that runs the tests simulates an installed Django app and is located
+in `paypaladaptive-testrunner/runtests.py`. Execute it like this:
+
+    $ python paypaladaptive-testrunner/runtests.py paypaladaptive paypaladaptive
+
+Contributing
+============
+
+Do you want to contribute? We'll gladly accept pull requests as long as your code
+is well tested and contributes to the goal of this library.
+
 License
-===
+=======
 
 <a rel="license" href="http://creativecommons.org/licenses/by/3.0/deed.sv"><img alt="Creative Commons-licens" style="border-width:0" src="http://i.creativecommons.org/l/by/3.0/80x15.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">django-paypal-adaptive</span> av <a xmlns:cc="http://creativecommons.org/ns#" href="https://github.com/FundedByMe/django-paypal-adaptive" property="cc:attributionName" rel="cc:attributionURL">FundedByMe</a> är licensierad under en <a rel="license" href="http://creativecommons.org/licenses/by/3.0/deed.sv">Creative Commons Erkännande 3.0 Unported licens</a>.<br />Based on a work at <a xmlns:dct="http://purl.org/dc/terms/" href="https://github.com/gmcguire/django-paypal-adaptive" rel="dct:source">https://github.com/gmcguire/django-paypal-adaptive</a>.
