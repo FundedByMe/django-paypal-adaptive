@@ -41,14 +41,14 @@ def render(request, template, template_vars=None):
 
 @login_required
 @transaction.autocommit
-def payment_cancel(request, payment_id, payment_secret_uuid,
+def payment_cancel(request, payment_id, secret_uuid,
                    template="paypaladaptive/cancel.html"):
     """Handle incoming cancellation from paypal"""
 
     logger.debug("Cancellation received for Payment %s" % payment_id)
 
     payment = get_object_or_404(Payment, id=payment_id,
-                                secret_uuid=payment_secret_uuid)
+                                secret_uuid=secret_uuid)
     
     payment.status = 'canceled'
     payment.save()

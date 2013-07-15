@@ -12,8 +12,8 @@ import settings
 urlpatterns = patterns(
     '',
 
-    url(r'^pay/cancel/(?P<payment_id>\d+)/$', views.payment_cancel,
-        name="paypal-adaptive-payment-cancel"),
+    url(r'^pay/cancel/(?P<payment_id>\d+)/(?P<secret_uuid>\w+)/$',
+        views.payment_cancel, name="paypal-adaptive-payment-cancel"),
 
     url(r'^pay/return/(?P<payment_id>\d+)/(?P<secret_uuid>\w+)/$',
         views.payment_return, name="paypal-adaptive-payment-return"),
