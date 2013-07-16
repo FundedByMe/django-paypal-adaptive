@@ -167,7 +167,7 @@ class Payment(PaypalAdaptive):
             raise ValueError("receivers must be an instance of "
                              "ReceiverList")
         elif not receivers.has_primary():
-            receivers._receivers[0].primary = True
+            receivers.receivers[0].primary = True
 
         endpoint_kwargs.update({'receivers': receivers})
 
