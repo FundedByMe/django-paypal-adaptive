@@ -25,7 +25,7 @@ PAYPAL_SIGNATURE = settings.PAYPAL_SIGNATURE
 PAYPAL_EMAIL = settings.PAYPAL_EMAIL
 
 USE_IPN = getattr(settings, 'PAYPAL_USE_IPN', True)
-USE_CHAIN = getattr(settings, 'PAYPAL_USE_CHAIN', False)
+USE_CHAIN = getattr(settings, 'PAYPAL_USE_CHAIN', True)
 USE_EMBEDDED = getattr(settings, 'PAYPAL_USE_EMBEDDED', True)
 SHIPPING = getattr(settings, 'PAYPAL_USE_SHIPPING', False)
 
