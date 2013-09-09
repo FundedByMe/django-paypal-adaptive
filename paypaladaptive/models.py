@@ -166,7 +166,7 @@ class Payment(PaypalAdaptive):
         if not isinstance(receivers, api.ReceiverList):
             raise ValueError("receivers must be an instance of "
                              "ReceiverList")
-        elif not receivers.has_primary():
+        elif not receivers.has_primary() and settings.USE_CHAIN:
             receivers.receivers[0].primary = True
 
         endpoint_kwargs.update({'receivers': receivers})
