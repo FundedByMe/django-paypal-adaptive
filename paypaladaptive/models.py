@@ -42,8 +42,7 @@ class UUIDField(models.CharField) :
 
 class PaypalAdaptive(models.Model):
     """Base fields used by all PaypalAdaptive models"""
-
-    money = MoneyField(_(u'money'), max_digits=6, decimal_places=2)
+    money = MoneyField(_(u'money'), max_digits=9, decimal_places=2)
     created_date = models.DateTimeField(_(u'created on'), auto_now_add=True)
     secret_uuid = UUIDField(_(u'secret UUID'))  # to verify return_url
     debug_request = models.TextField(_(u'raw request'), blank=True, null=True)
