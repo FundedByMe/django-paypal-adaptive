@@ -10,8 +10,6 @@ from django.utils import simplejson as json
 from money.contrib.django.models.fields import MoneyField
 
 import settings
-
-from api.errors import PaypalAdaptiveApiError
 import api
 
 
@@ -42,7 +40,8 @@ class UUIDField(models.CharField) :
 
 class PaypalAdaptive(models.Model):
     """Base fields used by all PaypalAdaptive models"""
-    money = MoneyField(_(u'money'), max_digits=9, decimal_places=2)
+    money = MoneyField(_(u'money'), max_digits=settings.MAX_DIGITS,
+                       decimal_places=settings.DECIMAL_PLACES)
     created_date = models.DateTimeField(_(u'created on'), auto_now_add=True)
     secret_uuid = UUIDField(_(u'secret UUID'))  # to verify return_url
     debug_request = models.TextField(_(u'raw request'), blank=True, null=True)

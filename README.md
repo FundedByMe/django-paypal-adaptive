@@ -106,6 +106,18 @@ django.conf.settings.DEFAULT_CURRENCY
 
 Used by python-money, will default to USD
 
+django.conf.settings.PAYPAL_DECIMAL_PLACES
+------------------------------------------
+
+Number of decimal places assigned to the MoneyField (used by Payment and
+Preapproval models).
+
+django.conf.settings.PAYPAL_MAX_DIGITS
+--------------------------------------
+
+Max number of digits assigned to the Moneyfield (used by Payment and Preapproval
+models).
+
 django.conf.settings.PAYPAL_TEST_WITH_MOCK
 -----------------------------------------
 
