@@ -75,57 +75,46 @@ The status describes
 Settings
 ========
 
-django.conf.settings.PAYPAL_APPLICATION_ID
-------------------------------------------
+**`django.conf.settings.PAYPAL_APPLICATION_ID`**
 
 Your Paypal application ID. Will default to `APP-80W284485P519543T` if 
 `DEBUG` is set to `True`.
 
-django.conf.settings.PAYPAL_USERID
-----------------------------------
+**`django.conf.settings.PAYPAL_USERID`**
 
 Paypal User ID
 
-django.conf.settings.PAYPAL_PASSWORD
-----------------------------------
+**`django.conf.settings.PAYPAL_PASSWORD`**
 
 Paypal password
 
-django.conf.settings.PAYPAL_SIGNATURE
-----------------------------------
+**`django.conf.settings.PAYPAL_SIGNATURE`**
 
 Paypal signature
 
-django.conf.settings.PAYPAL_EMAIL
-----------------------------------
+**`django.conf.settings.PAYPAL_EMAIL`**
 
 Paypal Email
 
-django.conf.settings.DEFAULT_CURRENCY
-----------------------------------
+**`django.conf.settings.DEFAULT_CURRENCY`**
 
 Used by python-money, will default to USD
 
-django.conf.settings.PAYPAL_DECIMAL_PLACES
-------------------------------------------
+**`django.conf.settings.PAYPAL_DECIMAL_PLACES`**
 
 Number of decimal places assigned to the MoneyField (used by Payment and
 Preapproval models).
 
-django.conf.settings.PAYPAL_MAX_DIGITS
---------------------------------------
+**`django.conf.settings.PAYPAL_MAX_DIGITS`**
 
 Max number of digits assigned to the Moneyfield (used by Payment and Preapproval
 models).
 
-django.conf.settings.PAYPAL_TEST_WITH_MOCK
------------------------------------------
+**`django.conf.settings.PAYPAL_TEST_WITH_MOCK`**
 
 Set whether tests should be run with built-in mocking responses and requests
 or if the testing should spawn requests that hits Paypal's APIs directly.
-Defaults to True. Override in your settings file like this:
-
-    PAYPAL_TEST_WITH_MOCK = False
+Defaults to True.
 
 Run tests
 =========
