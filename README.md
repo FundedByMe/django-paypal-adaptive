@@ -36,8 +36,30 @@ Or if you're using __South__ you might want to add an initial migration for futu
     $ python manage.py schemamigration paypaladaptive --initial
     $ python manage.py syncdb --migrate
 
+
+Examples
+========
+
+Create and process a payment to two receivers from a preapproval key.
+
+    from paypaladaptive.models import Payment
+    from paypaladaptive.api import ReceiverList, Receiver
+    from money.Money import Money
+
+    key = 'PA-2MT146200X905683P'
+    platform = Receiver(amount=100, email="merchant@example.com", primary=False)
+    merchant = Receiver(amount=1900, email="mrbuyer@antonagestam.se", primary=True)
+    receivers = ReceiverList([platform, merchant])
+
+    p = Payment()
+    p.money=Money(2000, 'USD')
+    p.save()
+    p.process(receivers, preapproval_key=key)
+
+
+
 Models
-===
+======
 
 Payment
 ---

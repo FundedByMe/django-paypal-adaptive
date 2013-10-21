@@ -124,18 +124,7 @@ class Payment(PaypalAdaptive):
 
     @transaction.autocommit
     def process(self, receivers, preapproval=None, **kwargs):
-        """Process the payment
-        >>>from paypaladaptive.models import Payment
-        >>>from paypaladaptive.api import ReceiverList, Receiver
-        >>>from money.Money import Money
-        >>>r = Receiver(amount=100, email="msn-facilitator@antonagestam.se", primary=False)
-        >>>entrep = Receiver(amount=1900, email="mrbuyer@antonagestam.se", primary=True)
-        >>>receivers = ReceiverList([r, entrep])
-        >>>p = Payment()
-        >>>p.money=Money(2000, 'usd')
-        >>>p.save()
-        >>>p.process(receivers, preapproval_key='PA-2MT146200X905683P')
-        """
+        """Process the payment"""
 
         endpoint_kwargs = {'money': self.money,
                            'return_url': self.return_url,

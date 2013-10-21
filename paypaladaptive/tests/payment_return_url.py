@@ -5,6 +5,7 @@ from paypaladaptive.models import Payment
 
 from factories import PaymentFactory, PreapprovalFactory
 
+
 class TestPaymentReturnURL(TestCase):
     def setUp(self):
         self.payment = PaymentFactory.create(status='created')
