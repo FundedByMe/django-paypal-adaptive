@@ -57,11 +57,11 @@ class PaypalAdaptiveEndpoint(object):
         if ('responseEnvelope' not in self.response
                 or 'ack' not in self.response['responseEnvelope']
                 or self.response['responseEnvelope']['ack']
-                not in ['Success','SuccessWithWarning']):
+                not in ['Success', 'SuccessWithWarning']):
             error_message = 'unknown'
             try:
                 error_message = self.response['error'][0]['message']
-            except Exception:
+            except KeyError:
                 pass
 
             raise self.error_class(error_message)

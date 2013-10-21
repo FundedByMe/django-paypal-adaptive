@@ -87,9 +87,35 @@ class PaypalAdaptive(models.Model):
     class Meta:
         abstract = True
 
+    def get_update_kwargs(self):
+        return {}
+
+    def _parse_update_status_detail(self, response):
+        return ''
+
+    def update(self, save=True, fields=None):
+        if not hasattr(self, 'update_endpoint'):
+            raise NotImplemented('Model need to specify an update endpoint')
+
+        if fields is None:
+            fields = ['status', 'status_detail']
+
+        __, endpoint = self.call(self.update_endpoint,
+                                 **self.get_update_kwargs())
+        response = endpoint.response
+
+        for field in fields:
+            val = getattr(self, '_parse_update_%s' % field)(response)
+            setattr(self, field, val)
+
+        if save:
+            self.save()
+
 
 class Payment(PaypalAdaptive):
     """Models a payment made using Paypal"""
+
+    update_endpoint = api.PaymentDetails
 
     STATUS_CHOICES = (
         ('new', _(u'New')),  # just saved locally
@@ -221,6 +247,21 @@ class Payment(PaypalAdaptive):
                         debug_response=refund_call.raw_response)
         refund.save()
 
+    def get_update_kwargs(self):
+        if self.pay_key is None:
+            raise Exception("Not saved!")
+        return {'payKey': self.pay_key}
+
+    def _parse_update_status(self, response):
+        if response['status'] == 'COMPLETED':
+            return 'completed'
+        elif response['status'] == 'CREATED':
+            return 'created'
+        elif response['status'] == 'ERROR':
+            return 'error'
+        else:
+            return self.status
+
     def next_url(self):
         return ('%s?cmd=_ap-payment&paykey=%s'
                 % (settings.PAYPAL_PAYMENT_HOST, self.pay_key))
@@ -252,6 +293,7 @@ class Refund(PaypalAdaptive):
 class Preapproval(PaypalAdaptive):
     """Models a preapproval made using Paypal"""
 
+    update_endpoint = api.PreapprovalDetails
     default_valid_range = timedelta(days=90)
     default_valid_date = lambda: (datetime.now() +
                                   Preapproval.default_valid_range)
@@ -343,7 +385,30 @@ class Preapproval(PaypalAdaptive):
         self.save()
         
         return self.status == 'used'
-    
+
+    def get_update_kwargs(self):
+        if self.preapproval_key is None:
+            raise ValueError("Can't update unprocessed preapprovals")
+        return {'preapproval_key': self.preapproval_key}
+
+    def _parse_update_status(self, response):
+        completed_payments = response.get('curPayments', None)
+        max_payments = response.get('maxNumberOfPayments', None)
+        status = response.get('status', None)
+        approved = response.get('approved', 'false')
+
+        if ('curPayments' in response and 'maxNumberOfPayments' in response
+                and completed_payments == max_payments):
+            return 'used'
+        elif status == 'ACTIVE' and approved == 'true':
+            return 'approved'
+        elif status == 'ACTIVE':
+            return 'created'
+        elif status == 'CANCELED':
+            return 'canceled'
+        else:
+            return self.status
+
     def next_url(self):
         """Custom next URL"""
         return ('%s?cmd=_ap-preapproval&preapprovalkey=%s'
