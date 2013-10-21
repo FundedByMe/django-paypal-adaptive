@@ -291,15 +291,7 @@ class Preapproval(PaypalAdaptive):
 
     @transaction.autocommit
     def process(self, **kwargs):
-        """Process the preapproval
-        >>>from paypaladaptive.models import Preapproval
-        >>>p = Preapproval()
-        >>>from money.Money import Money
-        >>>p.money = Money(2000, 'usd')
-        >>>p.save()
-        >>>extra = {'requireInstantFundingSource': True, 'displayMaxTotalAmount': True, 'next': '123'}
-        >>>p.process(**extra)
-        """
+        """Process the preapproval"""
 
         endpoint_kwargs = {'money': self.money,
                            'return_url': self.return_url,

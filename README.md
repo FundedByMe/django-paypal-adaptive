@@ -40,6 +40,20 @@ Or if you're using __South__ you might want to add an initial migration for futu
 Examples
 ========
 
+Create and process a preapproval for a payment.
+
+    from paypaladaptive.models import Preapproval
+    from money.Money import Money
+
+    preapproval = Preapproval()
+    preapproval.money = Money(2000, 'usd')
+    preapproval.save()
+    preapproval.process(next='/home/', displayMaxTotalAmount=True)
+
+    # Redirect the user to the next_url() value
+    redirect_url = preapproval.next_url()
+
+
 Create and process a payment to two receivers from a preapproval key.
 
     from paypaladaptive.models import Payment
@@ -61,10 +75,35 @@ Create and process a payment to two receivers from a preapproval key.
 Models
 ======
 
-Payment
----
+The Payment and Preapproval inherit from an abstract model PaypalAdaptive and
+therefor shares some data fields.
 
-__Status__
+__`PaypalAdaptive.money`__
+
+`money` is a python-money MoneyField. MoneyField extends Django's DecimalField
+so has max_digits and decimal_places attributes that can be set with the
+`PAYPAL_MAX_DIGITS` and `PAYPAL_DECIMAL_PLACES` settings.
+
+__`PaypalAdaptive.created_date`__
+
+DateTimeField with `auto_now_add=True`.
+
+__`PaypalAdaptive.debug_request`__
+
+Raw request body (JSON)
+
+__`PaypalAdaptive.debug_response`__
+
+Raw response body (JSON)
+
+__`PaypalAdaptive.secret_uuid`__
+
+Secret identifier of each object.
+
+Payment
+-------
+
+__`Payment.status`__
 
 Possible values are:
 
@@ -77,10 +116,22 @@ Possible values are:
     'refunded'  # The Payment is refunded
     'canceled'  # The Payment has been canceled
 
-Preapproval
----
+__`Payment.status_detail`__
 
-__Status__
+Stores error messages from the latest transaction
+
+__`Payment.pay_key`__
+
+Corresponds to Paypal Adaptive's `payKey`
+
+__`Payment.transaction_id`__
+
+Corresponds to Paypal Adaptive's `transactionId`
+
+Preapproval
+-----------
+
+__`Preapproval.status`__
 
 Possible values are:
 
@@ -92,7 +143,13 @@ Possible values are:
     'canceled'  # Preapproval has been canceled
     'used'  # Preapproval has been used in payment
 
-The status describes
+__`Preapproval.status_detail`__
+
+Stores error messages from the latest transaction
+
+__`Preapproval.valid_until_date`__
+
+Preapproval expiry date
 
 Settings
 ========
