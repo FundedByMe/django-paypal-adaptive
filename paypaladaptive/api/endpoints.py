@@ -233,6 +233,21 @@ class Preapprove(PaypalAdaptiveEndpoint):
         return self.response.get('preapprovalKey', None)
 
 
+class PreapprovalDetails(PaypalAdaptiveEndpoint):
+    """
+    Models the PreapprovalDetails API operation.
+    Use this to retrieve data about a Preapproval from Paypal
+
+    """
+
+    url = '%s%s' % (settings.PAYPAL_ENDPOINT, 'PreapprovalDetails')
+    error_class = PaypalAdaptiveApiError
+
+    def prepare_data(self, preapproval_key):
+        """Prepare data for PreapprovalDetails API call"""
+        return {'preapprovalKey': preapproval_key}
+
+
 class ShippingAddress(PaypalAdaptiveEndpoint):
     url = '%s%s' % (settings.PAYPAL_ENDPOINT, 'GetShippingAddresses')
 
