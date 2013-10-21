@@ -249,15 +249,17 @@ class Payment(PaypalAdaptive):
 
     def get_update_kwargs(self):
         if self.pay_key is None:
-            raise Exception("Not saved!")
+            raise ValueError("Can't update unprocessed payments")
         return {'payKey': self.pay_key}
 
     def _parse_update_status(self, response):
-        if response['status'] == 'COMPLETED':
+        status = response.get('status', None)
+
+        if status == 'COMPLETED':
             return 'completed'
-        elif response['status'] == 'CREATED':
+        elif status == 'CREATED':
             return 'created'
-        elif response['status'] == 'ERROR':
+        elif status == 'ERROR':
             return 'error'
         else:
             return self.status
@@ -389,7 +391,7 @@ class Preapproval(PaypalAdaptive):
     def get_update_kwargs(self):
         if self.preapproval_key is None:
             raise ValueError("Can't update unprocessed preapprovals")
-        return {'preapproval_key': self.preapproval_key}
+        return {'preapprovalKey': self.preapproval_key}
 
     def _parse_update_status(self, response):
         completed_payments = response.get('curPayments', None)

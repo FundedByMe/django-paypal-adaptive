@@ -243,9 +243,9 @@ class PreapprovalDetails(PaypalAdaptiveEndpoint):
     url = '%s%s' % (settings.PAYPAL_ENDPOINT, 'PreapprovalDetails')
     error_class = PaypalAdaptiveApiError
 
-    def prepare_data(self, preapproval_key):
+    def prepare_data(self, preapprovalKey):
         """Prepare data for PreapprovalDetails API call"""
-        return {'preapprovalKey': preapproval_key}
+        return {'preapprovalKey': preapprovalKey}
 
 
 class ShippingAddress(PaypalAdaptiveEndpoint):

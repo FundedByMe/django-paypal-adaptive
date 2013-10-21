@@ -4,8 +4,6 @@ from django.test import TestCase
 
 from mock import patch
 
-from ..models import Preapproval
-
 from .factories import PreapprovalFactory
 
 
@@ -40,14 +38,9 @@ class TestPreapprovalUpdate(TestCase):
         self.preapproval = PreapprovalFactory.create(
             status='new', preapproval_key='PA-9HW83863H61516232')
 
-    def get_valid_response(self, money):
-        return {
-            u'woot': u'hej'
-        }
-
     def test_parse_status(self):
         response = {'curPayments': 1,
-                     'maxNumberOfPayments': 1}
+                    'maxNumberOfPayments': 1}
         self.assertEqual(
             'used', self.preapproval._parse_update_status(response))
         
@@ -66,7 +59,7 @@ class TestPreapprovalUpdate(TestCase):
         self.assertEqual('new', self.preapproval._parse_update_status({}))
 
     def test_get_update_kwargs(self):
-        self.assertEqual({'preapproval_key': self.preapproval.preapproval_key},
+        self.assertEqual({'preapprovalKey': self.preapproval.preapproval_key},
                          self.preapproval.get_update_kwargs())
 
         with self.assertRaises(ValueError) as context_manager:
