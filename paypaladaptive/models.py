@@ -134,6 +134,17 @@ class Payment(PaypalAdaptive):
                               choices=STATUS_CHOICES, default='new')
     status_detail = models.CharField(_(u'detailed status'), max_length=2048)
 
+    def save(self, *args, **kwargs):
+        is_new = self.id is None
+
+        super(Payment, self).save(*args, **kwargs)
+
+        if settings.USE_DELAYED_UPDATES and is_new:
+            from .tasks import update_payment
+            update_payment.apply_async(
+                args=[self.id],
+                eta=datetime.now() + settings.DELAYED_UPDATE_COUNTDOWN)
+
     @property
     def return_url(self):
         current_site = Site.objects.get_current()
@@ -316,6 +327,17 @@ class Preapproval(PaypalAdaptive):
     status = models.CharField(_(u'status'), max_length=10,
                               choices=STATUS_CHOICES, default='new')
     status_detail = models.CharField(_(u'detailed status'), max_length=2048)
+
+    def save(self, *args, **kwargs):
+        is_new = self.id is None
+
+        super(Preapproval, self).save(*args, **kwargs)
+
+        if settings.USE_DELAYED_UPDATES and is_new:
+            from .tasks import update_preapproval
+            update_preapproval.apply_async(
+                args=[self.id],
+                eta=datetime.now() + settings.DELAYED_UPDATE_COUNTDOWN)
 
     @property
     def return_url(self):

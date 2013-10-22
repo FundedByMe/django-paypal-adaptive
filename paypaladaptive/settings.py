@@ -1,3 +1,4 @@
+from datetime import timedelta
 from django.conf import settings
 from money import set_default_currency
 
@@ -25,6 +26,9 @@ PAYPAL_SIGNATURE = settings.PAYPAL_SIGNATURE
 PAYPAL_EMAIL = settings.PAYPAL_EMAIL
 
 USE_IPN = getattr(settings, 'PAYPAL_USE_IPN', True)
+USE_DELAYED_UPDATES = getattr(settings, 'PAYPAL_USE_DELAYED_UPDATES', False)
+DELAYED_UPDATE_COUNTDOWN = getattr(
+    settings, 'PAYPAL_DELAYED_UPDATE_COUNTDOWN', timedelta(minutes=60))
 USE_CHAIN = getattr(settings, 'PAYPAL_USE_CHAIN', True)
 USE_EMBEDDED = getattr(settings, 'PAYPAL_USE_EMBEDDED', True)
 SHIPPING = getattr(settings, 'PAYPAL_USE_SHIPPING', False)

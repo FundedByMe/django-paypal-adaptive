@@ -1,5 +1,5 @@
 Django Paypal Adaptive
-===
+======================
 
 [![Build Status](https://travis-ci.org/FundedByMe/django-paypal-adaptive.png?branch=master)](https://travis-ci.org/FundedByMe/django-paypal-adaptive)
 [![Downloads](https://pypip.in/v/django-paypal-adaptive/badge.png)](https://pypi.python.org/pypi/django-paypal-adaptive)
@@ -37,8 +37,11 @@ Or if you're using __South__ you might want to add an initial migration for futu
     $ python manage.py syncdb --migrate
 
 
+Usage
+=====
+
 Examples
-========
+--------
 
 Create and process a preapproval for a payment.
 
@@ -70,7 +73,25 @@ Create and process a payment to two receivers from a preapproval key.
     p.save()
     p.process(receivers, preapproval_key=key)
 
+IPN vs Delayed Updates
+----------------------
 
+Paypal Adaptive uses IPN messages to ping your server about Payment and
+Preapproval updates. Using IPN requires you to listen for incoming calls from
+Paypal. Sometimes Paypal has issues with their IPN service and therefor you
+might sometimes need to ping them for an update of the status instead. This
+package comes with both and they can be used in parallel. That way you get both
+the speed and asynchronous nature of IPN messages and the stability of delayed
+lookups. Delayed lookups are disabled by default and requires Celery to be
+installed. To install this requirement automatically, use:
+
+    pip install django-paypal-adaptive[delayed-updates]
+
+And set `PAYPAL_USE_DELAYED_UPDATES` to `True` in your Django settings. Note
+that this requires you to setup Celery on your own.
+
+You can also implement your own background tasks and logic and call
+`Preapproval.update()` and `Payment.update()` when you find it appropriate.
 
 Models
 ======
@@ -175,6 +196,15 @@ Paypal signature
 
 Paypal Email
 
+**`django.conf.settings.PAYPAL_USE_IPN`**
+
+Whether or not to listen for incoming IPN messages. Defaults to `True`.
+
+**`django.conf.settings.PAYPAL_USE_DELAYED_UPDATES`**
+
+Whether or not to schedule update tasks for Preapprovals and Payments. Defaults
+to `False`.
+
 **`django.conf.settings.DEFAULT_CURRENCY`**
 
 Used by python-money, will default to USD
@@ -203,9 +233,9 @@ To run the tests, first install the test requirements:
     $ [sudo] pip install -r requirements_test.txt --use-mirrors
     
 The script that runs the tests simulates an installed Django app and is located
-in `paypaladaptive-testrunner/runtests.py`. Execute it like this:
+in `runtests.py`. Execute it like this:
 
-    $ python paypaladaptive-testrunner/runtests.py paypaladaptive paypaladaptive
+    $ python runtests.py
 
 Contributing
 ============
