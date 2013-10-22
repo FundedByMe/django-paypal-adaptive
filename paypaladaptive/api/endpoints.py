@@ -57,11 +57,11 @@ class PaypalAdaptiveEndpoint(object):
         if ('responseEnvelope' not in self.response
                 or 'ack' not in self.response['responseEnvelope']
                 or self.response['responseEnvelope']['ack']
-                not in ['Success','SuccessWithWarning']):
+                not in ['Success', 'SuccessWithWarning']):
             error_message = 'unknown'
             try:
                 error_message = self.response['error'][0]['message']
-            except Exception:
+            except KeyError:
                 pass
 
             raise self.error_class(error_message)
@@ -231,6 +231,21 @@ class Preapprove(PaypalAdaptiveEndpoint):
     @property
     def preapprovalkey(self):
         return self.response.get('preapprovalKey', None)
+
+
+class PreapprovalDetails(PaypalAdaptiveEndpoint):
+    """
+    Models the PreapprovalDetails API operation.
+    Use this to retrieve data about a Preapproval from Paypal
+
+    """
+
+    url = '%s%s' % (settings.PAYPAL_ENDPOINT, 'PreapprovalDetails')
+    error_class = PaypalAdaptiveApiError
+
+    def prepare_data(self, preapprovalKey):
+        """Prepare data for PreapprovalDetails API call"""
+        return {'preapprovalKey': preapprovalKey}
 
 
 class ShippingAddress(PaypalAdaptiveEndpoint):

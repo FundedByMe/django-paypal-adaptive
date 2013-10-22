@@ -6,6 +6,7 @@ from ..models import Preapproval
 from .factories import PreapprovalFactory
 from .helpers import mock_ipn_call
 
+
 class TestPreapprovalCancel(TestCase):
     def setUp(self):
         self.preapproval = PreapprovalFactory.create(status='created')
