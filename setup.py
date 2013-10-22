@@ -16,6 +16,16 @@ setup(
         'python-dateutil==2.1',
         'python-money',
     ],
+    extras_require={
+        'ipn-fallback': ['celery>=3.0.12'],
+    },
+    test_suite='paypaladaptive-testrunner.runtests',
+    tests_require=[
+        'factory-boy>=1.3.0',
+        'mock>=1.0.1',
+        'six>=1.3.0',
+        'wsgiref>=0.1.2'
+    ],
     dependency_links=[
         '-e git+http://github.com/poswald/python-money.git@29d3671e140307b958b51a32e6d1ac8553edc9e5#egg=python_money-dev'
     ],

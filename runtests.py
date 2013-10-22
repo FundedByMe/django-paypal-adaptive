@@ -34,16 +34,9 @@ def main():
     options, args = parser.parse_args()
 
     # check for app in args
-    try:
-        app_path = args[0]
-    except IndexError:
-        print "You did not provide an app path."
-        raise SystemExit
-    else:
-        if app_path.endswith("/"):
-            app_path = app_path[:-1]
-        parent_dir, app_name = os.path.split(app_path)
-        sys.path.insert(0, parent_dir)
+    app_path = 'paypaladaptive'
+    parent_dir, app_name = os.path.split(app_path)
+    sys.path.insert(0, parent_dir)
 
     settings.configure(**{
         "PAYPAL_APPLICATION_ID": 'fake',
@@ -67,13 +60,10 @@ def main():
             "django.template.loaders.eggs.Loader",
         ),
         "TEMPLATE_DIRS": (
-            os.path.join(os.path.dirname(__file__), "templates"),
+            os.path.join(os.path.dirname(__file__),
+                         "paypaladaptive/templates"),
         ),
         "INSTALLED_APPS": (
-            # HACK: the admin app should *not* be required. Need to spend some
-            # time looking into this. Django #8523 has a patch for this issue,
-            # but was wrongly attached to that ticket. It should have its own
-            # ticket.
             "django.contrib.auth",
             "django.contrib.contenttypes",
             "django.contrib.sessions",
@@ -106,7 +96,7 @@ def main():
             }
         }
     })
-    call_command("test", *args[1:])
+    call_command("test", app_name)
 
 if __name__ == "__main__":
     main()

@@ -17,7 +17,6 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 import settings
-import api
 from api.ipn import constants
 from models import Payment, Preapproval
 from decorators import takes_ipn
@@ -61,7 +60,7 @@ def payment_cancel(request, payment_id, secret_uuid,
 def payment_return(request, payment_id, secret_uuid,
                    template="paypaladaptive/return.html"):
     """
-    Incoming return from paypal process. Note that this is a user returning to
+    Incoming return from Paypal process. Note that this is a user returning to
     the site and not a returned payment.
 
     """
@@ -90,10 +89,9 @@ def payment_return(request, payment_id, secret_uuid,
         payment.status = 'returned'
         payment.save()
 
-    if not settings.USE_IPN:
-        logger.warning("Using PaymentDetails is not implemented and IPN is"
-                       "turned off.")
-        # TODO: make PaymentDetails call here if not using IPN
+    if settings.USE_DELAYED_UPDATES:
+        from .tasks import update_payment
+        update_payment.delay(payment_id=payment.id)
 
     template_vars = {"is_embedded": settings.USE_EMBEDDED}
     return render(request, template, template_vars)
@@ -107,10 +105,6 @@ def preapproval_cancel(request, preapproval_id,
     logger.debug("Cancellation received for Preapproval %s" % preapproval_id)
 
     get_object_or_404(Preapproval, id=preapproval_id)
-
-    # api.CancelPreapproval(preapproval.preapproval_key)
-    # preapproval.status = 'canceled'
-    # preapproval.save()
 
     template_vars = {"is_embedded": settings.USE_EMBEDDED}
     return render(request, template, template_vars)
@@ -148,10 +142,9 @@ def preapproval_return(request, preapproval_id, secret_uuid,
         preapproval.status = 'returned'
         preapproval.save()
 
-    if not settings.USE_IPN:
-        # TODO: make PreapprovalDetails call here if not using IPN
-        logger.warning("Using PreapprovalDetails is not implemented and IPN is"
-                       "turned off.")
+    if settings.USE_DELAYED_UPDATES:
+        from .tasks import update_preapproval
+        update_preapproval.delay(preapproval_id=preapproval.id)
 
     template_vars = {"is_embedded": settings.USE_EMBEDDED,
                      "preapproval": preapproval, }
