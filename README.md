@@ -18,14 +18,16 @@ Installation
 
 Install package from PyPI:
 
-    pip install django-paypal-adaptive
+    $ pip install django-paypal-adaptive
     
 Add to your project's `INSTALLED_APPS` setting:
 
-    INSTALLED_APPS = (
-        …
-        'paypaladaptive',
-    )
+```python
+INSTALLED_APPS = (
+    # …
+    'paypaladaptive',
+)
+```
 
 Sync the database:
     
@@ -45,33 +47,36 @@ Examples
 
 Create and process a preapproval for a payment.
 
-    from paypaladaptive.models import Preapproval
-    from money.Money import Money
+```python
+from paypaladaptive.models import Preapproval
+from money.Money import Money
 
-    preapproval = Preapproval()
-    preapproval.money = Money(2000, 'usd')
-    preapproval.save()
-    preapproval.process(next='/home/', displayMaxTotalAmount=True)
+preapproval = Preapproval()
+preapproval.money = Money(2000, 'usd')
+preapproval.save()
+preapproval.process(next='/home/', displayMaxTotalAmount=True)
 
-    # Redirect the user to the next_url() value
-    redirect_url = preapproval.next_url()
-
+# Redirect the user to the next_url() value
+redirect_url = preapproval.next_url()
+```
 
 Create and process a payment to two receivers from a preapproval key.
 
-    from paypaladaptive.models import Payment
-    from paypaladaptive.api import ReceiverList, Receiver
-    from money.Money import Money
+```python
+from paypaladaptive.models import Payment
+from paypaladaptive.api import ReceiverList, Receiver
+from money.Money import Money
 
-    key = 'PA-2MT146200X905683P'
-    platform = Receiver(amount=100, email="merchant@example.com", primary=False)
-    merchant = Receiver(amount=1900, email="mrbuyer@antonagestam.se", primary=True)
-    receivers = ReceiverList([platform, merchant])
+key = 'PA-2MT146200X905683P'
+platform = Receiver(amount=100, email="merchant@example.com", primary=False)
+merchant = Receiver(amount=1900, email="mrbuyer@antonagestam.se", primary=True)
+receivers = ReceiverList([platform, merchant])
 
-    p = Payment()
-    p.money=Money(2000, 'USD')
-    p.save()
-    p.process(receivers, preapproval_key=key)
+p = Payment()
+p.money=Money(2000, 'USD')
+p.save()
+p.process(receivers, preapproval_key=key)
+```
 
 IPN vs Delayed Updates
 ----------------------
@@ -85,7 +90,7 @@ the speed and asynchronous nature of IPN messages and the stability of delayed
 lookups. Delayed lookups are disabled by default and requires Celery to be
 installed. To install this requirement automatically, use:
 
-    pip install django-paypal-adaptive[delayed-updates]
+    $ pip install django-paypal-adaptive[delayed-updates]
 
 And set `PAYPAL_USE_DELAYED_UPDATES` to `True` in your Django settings. Note
 that this requires you to setup Celery on your own.
