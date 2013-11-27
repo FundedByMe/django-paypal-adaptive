@@ -1,4 +1,5 @@
 """Models to support Paypal Adaptive API"""
+import logging
 from datetime import datetime, timedelta
 
 from django.core.urlresolvers import reverse
@@ -17,6 +18,8 @@ try:
     import uuid
 except ImportError:
     from django.utils import uuid
+
+logger = logging.getLogger(__name__)
 
 
 class UUIDField(models.CharField) :
@@ -95,21 +98,27 @@ class PaypalAdaptive(models.Model):
 
     def update(self, save=True, fields=None):
         if not hasattr(self, 'update_endpoint'):
-            raise NotImplemented('Model need to specify an update endpoint')
+            raise NotImplementedError(
+                'Model need to specify an update endpoint')
 
         if fields is None:
             fields = ['status', 'status_detail']
 
-        __, endpoint = self.call(self.update_endpoint,
-                                 **self.get_update_kwargs())
-        response = endpoint.response
+        try:
+            __, endpoint = self.call(self.update_endpoint,
+                                     **self.get_update_kwargs())
+        except ValueError, e:
+            model_name = self.__class__.__name__
+            logger.warning('Could not update %s:\n%s' % (model_name, e.message))
+        else:
+            response = endpoint.response
 
-        for field in fields:
-            val = getattr(self, '_parse_update_%s' % field)(response)
-            setattr(self, field, val)
+            for field in fields:
+                val = getattr(self, '_parse_update_%s' % field)(response)
+                setattr(self, field, val)
 
-        if save:
-            self.save()
+            if save:
+                self.save()
 
 
 class Payment(PaypalAdaptive):
@@ -259,7 +268,7 @@ class Payment(PaypalAdaptive):
         refund.save()
 
     def get_update_kwargs(self):
-        if self.pay_key is None:
+        if not self.pay_key:
             raise ValueError("Can't update unprocessed payments")
         return {'payKey': self.pay_key}
 
