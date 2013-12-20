@@ -10,17 +10,20 @@ setup(
     author_email='greg@buzzcar.com',
     maintainer='Anton Agestam',
     maintainer_email="msn@antonagestam.se",
-    url='http://github.com/gmcguire/django-paypal-adaptive',
+    url='http://github.com/FundedByMe/django-paypal-adaptive',
     install_requires=[
         'Django>=1.4.3',
         'python-dateutil==2.1',
         'python-money',
     ],
+    extras_require={
+        'delayed-updates': ['celery>=3.0.12'],
+    },
     dependency_links=[
-        '-e hg+https://bitbucket.org/acoobe/python-money/@edf852242ce422a7320c5fc95ceb01c0d38e7647#egg=python_money'
+        '-e git+http://github.com/poswald/python-money.git@29d3671e140307b958b51a32e6d1ac8553edc9e5#egg=python_money-dev'
     ],
-    description = 'A pluggable Django application for integrating PayPal'
-                  'Adaptive Payments',
+    description='A pluggable Django application for integrating PayPal '
+                'Adaptive Payments',
     packages=find_packages(),
     include_package_data=True,
     classifiers=[
@@ -31,4 +34,3 @@ setup(
         "Topic :: Software Development"
     ],
 )
-

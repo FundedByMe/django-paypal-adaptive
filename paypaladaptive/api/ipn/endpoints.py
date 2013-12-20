@@ -58,13 +58,15 @@ class IPN(object):
     def __init__(self, request):
         # verify that the request is paypal's
         url = '%s?cmd=_notify-validate' % settings.PAYPAL_PAYMENT_HOST
-        data = urllib.urlencode(request.POST.copy())
+        post_data = {}
+        for k, v in request.POST.copy().iteritems():
+            post_data[k] = unicode(v).encode('utf-8')
+        data = urllib.urlencode(post_data)
         verify_request = UrlRequest().call(url, data=data)
 
         # check code
         if verify_request.code != 200:
-            raise IpnError('PayPal response code was %i'
-                           % verify_request.code)
+            raise IpnError('PayPal response code was %s' % verify_request.code)
 
         # check response
         raw_response = verify_request.response
@@ -121,14 +123,17 @@ class IPN(object):
             raise e
         
         # Verify enumerations
-        if self.status and self.status not in [IPN_STATUS_CREATED,
-                                               IPN_STATUS_COMPLETED,
-                                               IPN_STATUS_INCOMPLETE,
-                                               IPN_STATUS_ERROR,
-                                               IPN_STATUS_REVERSALERROR,
-                                               IPN_STATUS_PROCESSING,
-                                               IPN_STATUS_PENDING,
-                                               IPN_STATUS_ACTIVE]:
+        allowed_statuses = [IPN_STATUS_CREATED,
+                            IPN_STATUS_COMPLETED,
+                            IPN_STATUS_INCOMPLETE,
+                            IPN_STATUS_ERROR,
+                            IPN_STATUS_REVERSALERROR,
+                            IPN_STATUS_PROCESSING,
+                            IPN_STATUS_PENDING,
+                            IPN_STATUS_ACTIVE,
+                            IPN_STATUS_CANCELED]
+
+        if self.status and self.status not in allowed_statuses:
             raise IpnError("unknown status: %s" % self.status)
         
         if (self.action_type

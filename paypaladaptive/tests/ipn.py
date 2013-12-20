@@ -1,31 +1,24 @@
-from urllib import urlencode
-from collections import OrderedDict
-
 import django.test as test
 from django.contrib.sites.models import Site
 from django.core.urlresolvers import reverse
+from django.http import HttpRequest
 
 from money.Money import Money
 import mock
+import urlparse
 
+from paypaladaptive.api.ipn import IPN
 from paypaladaptive.models import Payment, Preapproval
-from paypaladaptive.api.httpwrapper import UrlRequest, UrlResponse
+from paypaladaptive.api.errors import IpnError
+
 from factories import PreapprovalFactory, PaymentFactory
+from helpers import (MockIPNVerifyRequest,
+                     MockIPNVerifyRequestFail,
+                     MockIPNVerifyRequestInvalid,
+                     MockIPNVerifyRequestInvalidCode,
+                     mock_ipn_call)
 
 
-class MockIPNVerifyRequest(UrlRequest):
-    def call(self, url, data=None, headers=None):
-        MockIPNVerifyRequest.data = data
-        self._response = UrlResponse(data='VERIFIED', meta={}, code=200)
-        return self
-
-
-class MockIPNVerifyRequestInvalid(UrlRequest):
-    data = None
-    def call(self, url, data=None, headers=None):
-        self.data = data
-        self._response = UrlResponse(data='invalid', meta={}, code=200)
-        return self
 
 
 class TestPaymentIPN(test.TestCase):
@@ -40,14 +33,9 @@ class TestPaymentIPN(test.TestCase):
 
         return c.post(url, data=data)
 
-    def get_payment(self):
-        return Payment.objects.get(pk=self.payment.pk)
-
-    def testPasses(self):
-        """Test valid IPN call"""
-
-        money = str(self.payment.money)
-        data = {
+    def get_valid_IPN_data(self, money):
+        money = str(money)
+        return {
             'status': 'COMPLETED',
             'transaction_type': 'Adaptive Payment PAY',
             'transaction[0].id': '1',
@@ -55,7 +43,26 @@ class TestPaymentIPN(test.TestCase):
             'transaction[0].status': 'COMPLETED',
         }
 
+    def testVerificationCall(self):
+        """Test that the verification call is made with correct params"""
+
+        data = self.get_valid_IPN_data(self.payment.money)
+        self.mock_ipn_call(data)
+
+        verification_data = urlparse.parse_qs(MockIPNVerifyRequest.data)
+
+        for k, v in data.iteritems():
+            self.assertEqual([v], verification_data[k])
+
+    def get_payment(self):
+        return Payment.objects.get(pk=self.payment.pk)
+
+    def testPasses(self):
+        """Test valid IPN call"""
+
+        data = self.get_valid_IPN_data(self.payment.money)
         response = self.mock_ipn_call(data)
+
         self.assertEqual(response.status_code, 204)
         self.assertEqual(response.content, '')
 
@@ -63,22 +70,11 @@ class TestPaymentIPN(test.TestCase):
 
         self.assertEqual(payment.status, 'completed')
 
-    def testVerificationCall(self):
-        """Test that the verification call is made with correct params"""
+    def testSequenceCalls(self):
+        """Test two valid IPN calls being received in sequence"""
 
-        money = str(self.payment.money)
-        data = {
-            'status': 'COMPLETED',
-            'transaction_type': 'Adaptive Payment PAY',
-            'transaction[0].id': '1',
-            'transaction[0].amount': money,
-            'transaction[0].status': 'COMPLETED',
-        }
-
-        self.mock_ipn_call(data)
-        qs = urlencode(data)
-        self.assertEqual(MockIPNVerifyRequest.data, qs)
-
+        self.testPasses()
+        self.testPasses()
 
     def testMismatchedAmounts(self):
         """Test mismatching amounts"""
@@ -164,13 +160,9 @@ class TestPreapprovalIPN(test.TestCase):
     def setUp(self):
         self.preapproval = PreapprovalFactory.create(status='created')
 
-    @mock.patch('paypaladaptive.api.ipn.endpoints.UrlRequest',
-                MockIPNVerifyRequest)
     def mock_ipn_call(self, data, url=None):
-        c = test.Client()
         url = url if url is not None else self.preapproval.ipn_url
-
-        return c.post(url, data=data)
+        return mock_ipn_call(data, url)
 
     def get_preapproval(self):
         return Preapproval.objects.get(pk=self.preapproval.pk)
@@ -195,9 +187,9 @@ class TestPreapprovalIPN(test.TestCase):
             u'pin_type': u'NOT_REQUIRED',
             u'charset': u'windows-1252',
             u'test_ipn': u'1',
-            u'currency_code': money.currency,
+            u'currency_code': str(money.currency),
             u'current_period_attempts': u'0',
-            u'max_total_amount_of_all_payments': money.amount,
+            u'max_total_amount_of_all_payments': str(money.amount),
             u'approved': u'true'
         }
 
@@ -215,20 +207,25 @@ class TestPreapprovalIPN(test.TestCase):
 
         self.assertEqual(preapproval.status, 'approved')
 
+    def testSequenceCalls(self):
+        """Test two valid IPN calls being received in sequence"""
+
+        self.testPasses()
+        self.testPasses()
+
     @mock.patch('paypaladaptive.api.ipn.endpoints.UrlRequest',
                 MockIPNVerifyRequest)
     def testVerificationCall(self):
-        # TODO: bring back this test
         """Test that the verification call is made with correct params"""
 
-        data = OrderedDict(self.get_valid_IPN_call(self.preapproval.money))
-        qs = urlencode(data)
+        data = self.get_valid_IPN_call(self.preapproval.money)
 
         self.mock_ipn_call(data)
 
-        # qs params don't preserver order, might be due to python dicts
-        #self.assertEqual(MockIPNVerifyRequest.data, qs)
+        verification_data = urlparse.parse_qs(MockIPNVerifyRequest.data)
 
+        for k, v in data.iteritems():
+            self.assertEqual([v], verification_data[k])
 
     def testMismatchedAmounts(self):
         """Test mismatching amounts"""
@@ -259,3 +256,43 @@ class TestPreapprovalIPN(test.TestCase):
         self.assertEqual(preapproval.status, 'error')
         self.assertEqual(preapproval.status_detail,
                          "The preapproval is not approved")
+
+    def testUnicodeInMemo(self):
+        """Test with Unicode characters in the memo field."""
+
+        data = self.get_valid_IPN_call(self.preapproval.money)
+        data.update({u'memo': u"v\ufffdrldens b\ufffdsta app"})
+
+        self.mock_ipn_call(data)
+
+
+class TestIPNVerification(test.TestCase):
+    def setUp(self):
+        self.request = HttpRequest()
+
+    @mock.patch('paypaladaptive.api.ipn.endpoints.UrlRequest',
+                MockIPNVerifyRequestFail)
+    def testVerificationNoneCode(self):
+        with self.assertRaises(IpnError) as context:
+            IPN(self.request)
+
+        self.assertEqual(context.exception.message,
+                         'PayPal response code was None')
+
+    @mock.patch('paypaladaptive.api.ipn.endpoints.UrlRequest',
+                MockIPNVerifyRequestInvalidCode)
+    def testVerificationCodeInvalid(self):
+        with self.assertRaises(IpnError) as context:
+            IPN(self.request)
+
+        self.assertEqual(context.exception.message,
+                         'PayPal response code was 500')
+
+    @mock.patch('paypaladaptive.api.ipn.endpoints.UrlRequest',
+                MockIPNVerifyRequestInvalid)
+    def testVerificationMessageInvalid(self):
+        with self.assertRaises(IpnError) as context:
+            IPN(self.request)
+
+        self.assertEqual(context.exception.message,
+                         'PayPal response was "invalid"')

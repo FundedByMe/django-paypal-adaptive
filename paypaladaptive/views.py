@@ -17,7 +17,6 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 import settings
-import api
 from api.ipn import constants
 from models import Payment, Preapproval
 from decorators import takes_ipn
@@ -41,14 +40,14 @@ def render(request, template, template_vars=None):
 
 @login_required
 @transaction.autocommit
-def payment_cancel(request, payment_id, payment_secret_uuid,
+def payment_cancel(request, payment_id, secret_uuid,
                    template="paypaladaptive/cancel.html"):
     """Handle incoming cancellation from paypal"""
 
     logger.debug("Cancellation received for Payment %s" % payment_id)
 
     payment = get_object_or_404(Payment, id=payment_id,
-                                secret_uuid=payment_secret_uuid)
+                                secret_uuid=secret_uuid)
     
     payment.status = 'canceled'
     payment.save()
@@ -57,19 +56,19 @@ def payment_cancel(request, payment_id, payment_secret_uuid,
     return render(request, template, template_vars)
 
 
-@login_required
 @transaction.autocommit
-def payment_return(request, payment_id, payment_secret_uuid,
+def payment_return(request, payment_id, secret_uuid,
                    template="paypaladaptive/return.html"):
     """
-    Incoming return from paypal process (note this is a return to the site, not
-    a returned payment)
+    Incoming return from Paypal process. Note that this is a user returning to
+    the site and not a returned payment.
+
     """
 
     logger.debug("Return received for Payment %s" % payment_id)
 
     payment = get_object_or_404(Payment, id=payment_id,
-                                secret_uuid=payment_secret_uuid)
+                                secret_uuid=secret_uuid)
 
     if payment.status not in ['created', 'completed']:
         payment.status_detail = _(u"Expected status to be created or "
@@ -79,9 +78,9 @@ def payment_return(request, payment_id, payment_secret_uuid,
         payment.save()
         return HttpResponseServerError('Unexpected error')
 
-    elif payment_secret_uuid != payment.secret_uuid:
+    elif secret_uuid != payment.secret_uuid:
         payment.status_detail = (_(u"BuyReturn secret \"%s\" did not match")
-                                 % payment_secret_uuid)
+                                 % secret_uuid)
         payment.status = 'error'
         payment.save()
         return HttpResponseServerError('Unexpected error')
@@ -90,12 +89,10 @@ def payment_return(request, payment_id, payment_secret_uuid,
         payment.status = 'returned'
         payment.save()
 
-    if not settings.USE_IPN:
-        logger.warning("Using PaymentDetails is not implemented and IPN is"
-                       "turned off.")
-        # TODO: make PaymentDetails call here if not using IPN
-        pass
-        
+    if settings.USE_DELAYED_UPDATES:
+        from .tasks import update_payment
+        update_payment.delay(payment_id=payment.id)
+
     template_vars = {"is_embedded": settings.USE_EMBEDDED}
     return render(request, template, template_vars)
 
@@ -107,11 +104,7 @@ def preapproval_cancel(request, preapproval_id,
 
     logger.debug("Cancellation received for Preapproval %s" % preapproval_id)
 
-    preapproval = get_object_or_404(Preapproval, id=preapproval_id)
-
-    api.CancelPreapproval(preapproval.preapproval_key)
-    preapproval.status = 'canceled'
-    preapproval.save()
+    get_object_or_404(Preapproval, id=preapproval_id)
 
     template_vars = {"is_embedded": settings.USE_EMBEDDED}
     return render(request, template, template_vars)
@@ -149,14 +142,9 @@ def preapproval_return(request, preapproval_id, secret_uuid,
         preapproval.status = 'returned'
         preapproval.save()
 
-    if not settings.USE_IPN:
-        # TODO: make PreapprovalDetails call here if not using IPN
-        logger.warning("Using PreapprovalDetails is not implemented and IPN is"
-                       "turned off.")
-
-    if request.GET.get('next', False):
-        next_url = request.GET.get('next')
-        return HttpResponseRedirect(next_url)
+    if settings.USE_DELAYED_UPDATES:
+        from .tasks import update_preapproval
+        update_preapproval.delay(preapproval_id=preapproval.id)
 
     template_vars = {"is_embedded": settings.USE_EMBEDDED,
                      "preapproval": preapproval, }
@@ -221,11 +209,19 @@ def ipn(request, object_id, object_secret_uuid, ipn):
                 "IPN amounts didn't match. Preapproval requested %s. "
                 "Preapproval made %s"
                 % (obj.money, ipn.max_total_amount_of_all_payments))
+        elif ipn.status == constants.IPN_STATUS_CANCELED:
+            obj.status = 'canceled'
+            obj.status_detail = 'Cancellation received via IPN'
         elif not ipn.approved:
             obj.status = 'error'
             obj.status_detail = "The preapproval is not approved"
         else:
             obj.status = 'approved'
+    else:
+        logger.warning(
+            'No action found for IPN Type "%s" with status "%s" (id: "%s", '
+            'secret_uuid: %s)'
+            % (ipn.type, ipn.status, obj.id, obj.secret_uuid))
 
     obj.save()
 

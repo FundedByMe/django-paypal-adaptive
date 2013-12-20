@@ -1,8 +1,4 @@
-import json
-
 from django.test import TestCase
-from django.core.urlresolvers import reverse
-from django.contrib.sites.models import Site
 
 from money.Money import Money
 from mock import patch
@@ -85,7 +81,8 @@ class MockUrlRequestPayment(MockUrlRequest):
                                         'paypal-adaptive-payment-return')
 
     def _assert_valid_cancel_url(self, url):
-        self._assert_valid_reversed_url(url, {'payment_id': self.payment().id},
+        self._assert_valid_reversed_url(url, {'payment_id': self.payment().id,
+                                        'secret_uuid': self.payment().secret_uuid},
                                         'paypal-adaptive-payment-cancel')
 
     def _assert_valid_data(self, data):

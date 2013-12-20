@@ -1,4 +1,5 @@
 """Models to support Paypal Adaptive API"""
+import logging
 from datetime import datetime, timedelta
 
 from django.core.urlresolvers import reverse
@@ -10,8 +11,6 @@ from django.utils import simplejson as json
 from money.contrib.django.models.fields import MoneyField
 
 import settings
-
-from api.errors import PaypalAdaptiveApiError
 import api
 
 
@@ -19,6 +18,8 @@ try:
     import uuid
 except ImportError:
     from django.utils import uuid
+
+logger = logging.getLogger(__name__)
 
 
 class UUIDField(models.CharField) :
@@ -42,8 +43,8 @@ class UUIDField(models.CharField) :
 
 class PaypalAdaptive(models.Model):
     """Base fields used by all PaypalAdaptive models"""
-
-    money = MoneyField(_(u'money'), max_digits=6, decimal_places=2)
+    money = MoneyField(_(u'money'), max_digits=settings.MAX_DIGITS,
+                       decimal_places=settings.DECIMAL_PLACES)
     created_date = models.DateTimeField(_(u'created on'), auto_now_add=True)
     secret_uuid = UUIDField(_(u'secret UUID'))  # to verify return_url
     debug_request = models.TextField(_(u'raw request'), blank=True, null=True)
@@ -89,9 +90,41 @@ class PaypalAdaptive(models.Model):
     class Meta:
         abstract = True
 
+    def get_update_kwargs(self):
+        return {}
+
+    def _parse_update_status_detail(self, response):
+        return ''
+
+    def update(self, save=True, fields=None):
+        if not hasattr(self, 'update_endpoint'):
+            raise NotImplementedError(
+                'Model need to specify an update endpoint')
+
+        if fields is None:
+            fields = ['status', 'status_detail']
+
+        try:
+            __, endpoint = self.call(self.update_endpoint,
+                                     **self.get_update_kwargs())
+        except ValueError, e:
+            model_name = self.__class__.__name__
+            logger.warning('Could not update %s:\n%s' % (model_name, e.message))
+        else:
+            response = endpoint.response
+
+            for field in fields:
+                val = getattr(self, '_parse_update_%s' % field)(response)
+                setattr(self, field, val)
+
+            if save:
+                self.save()
+
 
 class Payment(PaypalAdaptive):
     """Models a payment made using Paypal"""
+
+    update_endpoint = api.PaymentDetails
 
     STATUS_CHOICES = (
         ('new', _(u'New')),  # just saved locally
@@ -110,6 +143,17 @@ class Payment(PaypalAdaptive):
                               choices=STATUS_CHOICES, default='new')
     status_detail = models.CharField(_(u'detailed status'), max_length=2048)
 
+    def save(self, *args, **kwargs):
+        is_new = self.id is None
+
+        super(Payment, self).save(*args, **kwargs)
+
+        if settings.USE_DELAYED_UPDATES and is_new:
+            from .tasks import update_payment
+            update_payment.apply_async(
+                args=[self.id],
+                eta=datetime.now() + settings.DELAYED_UPDATE_COUNTDOWN)
+
     @property
     def return_url(self):
         current_site = Site.objects.get_current()
@@ -120,24 +164,13 @@ class Payment(PaypalAdaptive):
     @property
     def cancel_url(self):
         current_site = Site.objects.get_current()
-        kwargs = {'payment_id': self.id}
+        kwargs = {'payment_id': self.id, 'secret_uuid': self.secret_uuid}
         cancel_url = reverse('paypal-adaptive-payment-cancel', kwargs=kwargs)
         return "http://%s%s" % (current_site, cancel_url)
 
     @transaction.autocommit
     def process(self, receivers, preapproval=None, **kwargs):
-        """Process the payment
-        >>>from paypaladaptive.models import Payment
-        >>>from paypaladaptive.api import ReceiverList, Receiver
-        >>>from money.Money import Money
-        >>>r = Receiver(amount=100, email="msn-facilitator@antonagestam.se", primary=False)
-        >>>entrep = Receiver(amount=1900, email="mrbuyer@antonagestam.se", primary=True)
-        >>>receivers = ReceiverList([r, entrep])
-        >>>p = Payment()
-        >>>p.money=Money(2000, 'usd')
-        >>>p.save()
-        >>>p.process(receivers, preapproval_key='PA-2MT146200X905683P')
-        """
+        """Process the payment"""
 
         endpoint_kwargs = {'money': self.money,
                            'return_url': self.return_url,
@@ -148,22 +181,26 @@ class Payment(PaypalAdaptive):
             return_next = "%s?next=%s" % (self.return_url, kwargs.pop('next'))
             endpoint_kwargs.update({'return_url': return_next})
 
+        # Update cancel_url
         if 'cancel' in kwargs:
             return_cancel = "%s?next=%s" % (self.cancel_url,
                                             kwargs.pop('cancel'))
             endpoint_kwargs.update({'cancel_url': return_cancel})
 
+        # Set ipn_url
+        if settings.USE_IPN:
+            endpoint_kwargs.update({'ipn_url': self.ipn_url})
+
         # Append extra arguments
         endpoint_kwargs.update(**kwargs)
-
 
         # Validate type of receivers and check ReceiverList has primary,
         # otherwise assign first
         if not isinstance(receivers, api.ReceiverList):
             raise ValueError("receivers must be an instance of "
                              "ReceiverList")
-        elif not receivers.has_primary():
-            receivers._receivers[0].primary = True
+        elif not receivers.has_primary() and settings.USE_CHAIN:
+            receivers.receivers[0].primary = True
 
         endpoint_kwargs.update({'receivers': receivers})
 
@@ -184,7 +221,21 @@ class Payment(PaypalAdaptive):
 
         self.pay_key = endpoint.paykey
 
-        if endpoint.status == 'COMPLETED':
+        if endpoint.status == 'ERROR':
+            self.status = 'error'
+            if 'payErrorList' in endpoint.response:
+                if 'payError' in endpoint.response['payErrorList']:
+                    payError = endpoint.response[
+                        'payErrorList']['payError'][0]['error']
+                    self.status_detail = "%s %s: %s" % (
+                        payError['severity'],
+                        payError['errorId'],
+                        payError['message'])
+                else:
+                    self.status_detail = json.dumps(
+                        endpoint.response.payErrorList)
+
+        elif endpoint.status == 'COMPLETED':
             self.status = 'completed'
         elif endpoint.paykey or endpoint.status == 'CREATED':
             self.status = 'created'
@@ -215,6 +266,23 @@ class Payment(PaypalAdaptive):
                         debug_request=json.dumps(refund_call.data),
                         debug_response=refund_call.raw_response)
         refund.save()
+
+    def get_update_kwargs(self):
+        if not self.pay_key:
+            raise ValueError("Can't update unprocessed payments")
+        return {'payKey': self.pay_key}
+
+    def _parse_update_status(self, response):
+        status = response.get('status', None)
+
+        if status == 'COMPLETED':
+            return 'completed'
+        elif status == 'CREATED':
+            return 'created'
+        elif status == 'ERROR':
+            return 'error'
+        else:
+            return self.status
 
     def next_url(self):
         return ('%s?cmd=_ap-payment&paykey=%s'
@@ -247,6 +315,7 @@ class Refund(PaypalAdaptive):
 class Preapproval(PaypalAdaptive):
     """Models a preapproval made using Paypal"""
 
+    update_endpoint = api.PreapprovalDetails
     default_valid_range = timedelta(days=90)
     default_valid_date = lambda: (datetime.now() +
                                   Preapproval.default_valid_range)
@@ -268,6 +337,17 @@ class Preapproval(PaypalAdaptive):
                               choices=STATUS_CHOICES, default='new')
     status_detail = models.CharField(_(u'detailed status'), max_length=2048)
 
+    def save(self, *args, **kwargs):
+        is_new = self.id is None
+
+        super(Preapproval, self).save(*args, **kwargs)
+
+        if settings.USE_DELAYED_UPDATES and is_new:
+            from .tasks import update_preapproval
+            update_preapproval.apply_async(
+                args=[self.id],
+                eta=datetime.now() + settings.DELAYED_UPDATE_COUNTDOWN)
+
     @property
     def return_url(self):
         current_site = Site.objects.get_current()
@@ -286,15 +366,7 @@ class Preapproval(PaypalAdaptive):
 
     @transaction.autocommit
     def process(self, **kwargs):
-        """Process the preapproval
-        >>>from paypaladaptive.models import Preapproval
-        >>>p = Preapproval()
-        >>>from money.Money import Money
-        >>>p.money = Money(2000, 'usd')
-        >>>p.save()
-        >>>extra = {'requireInstantFundingSource': True, 'displayMaxTotalAmount': True, 'next': '123'}
-        >>>p.process(**extra)
-        """
+        """Process the preapproval"""
 
         endpoint_kwargs = {'money': self.money,
                            'return_url': self.return_url,
@@ -346,7 +418,30 @@ class Preapproval(PaypalAdaptive):
         self.save()
         
         return self.status == 'used'
-    
+
+    def get_update_kwargs(self):
+        if self.preapproval_key is None:
+            raise ValueError("Can't update unprocessed preapprovals")
+        return {'preapprovalKey': self.preapproval_key}
+
+    def _parse_update_status(self, response):
+        completed_payments = response.get('curPayments', None)
+        max_payments = response.get('maxNumberOfPayments', None)
+        status = response.get('status', None)
+        approved = response.get('approved', 'false')
+
+        if ('curPayments' in response and 'maxNumberOfPayments' in response
+                and completed_payments == max_payments):
+            return 'used'
+        elif status == 'ACTIVE' and approved == 'true':
+            return 'approved'
+        elif status == 'ACTIVE':
+            return 'created'
+        elif status == 'CANCELED':
+            return 'canceled'
+        else:
+            return self.status
+
     def next_url(self):
         """Custom next URL"""
         return ('%s?cmd=_ap-preapproval&preapprovalkey=%s'
