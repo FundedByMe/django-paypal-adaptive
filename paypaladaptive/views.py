@@ -17,7 +17,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 import settings
-from api.ipn import constants
+from api.ipn import constants, signals
 from models import Payment, Preapproval
 from decorators import takes_ipn
 
@@ -169,6 +169,8 @@ def ipn(request, object_id, object_secret_uuid, ipn):
         constants.IPN_TYPE_ADJUSTMENT: Payment
     }[ipn.type]
 
+    ipn_signal = None
+
     try:
         obj = object_class.objects.get(pk=object_id)
     except object_class.DoesNotExist:
@@ -192,14 +194,17 @@ def ipn(request, object_id, object_secret_uuid, ipn):
             obj.status_detail = ("IPN amounts didn't match. Payment requested "
                                  "%s. Payment made %s"
                                  % (obj.money, ipn.transactions[0].amount))
+            ipn_signal = signals.payment_error
 
         # check payment status
         elif request.POST.get('status', '') != 'COMPLETED':
             obj.status = 'error'
             obj.status_detail = ('PayPal status was "%s"'
                                  % request.POST.get('status'))
+            ipn_signal = signals.payment_error
         else:
             obj.status = 'completed'
+            ipn_signal = signals.payment_completed
 
             # TODO: mark preapproval 'used'
     elif ipn.type == constants.IPN_TYPE_PREAPPROVAL:
@@ -209,14 +214,18 @@ def ipn(request, object_id, object_secret_uuid, ipn):
                 "IPN amounts didn't match. Preapproval requested %s. "
                 "Preapproval made %s"
                 % (obj.money, ipn.max_total_amount_of_all_payments))
+            ipn_signal = signals.preapproval_error
         elif ipn.status == constants.IPN_STATUS_CANCELED:
             obj.status = 'canceled'
             obj.status_detail = 'Cancellation received via IPN'
+            ipn_signal = signals.preapproval_canceled
         elif not ipn.approved:
             obj.status = 'error'
             obj.status_detail = "The preapproval is not approved"
+            ipn_signal = signals.preapproval_error
         else:
             obj.status = 'approved'
+            ipn_signal = signals.preapproval_approved
     else:
         logger.warning(
             'No action found for IPN Type "%s" with status "%s" (id: "%s", '
@@ -224,6 +233,8 @@ def ipn(request, object_id, object_secret_uuid, ipn):
             % (ipn.type, ipn.status, obj.id, obj.secret_uuid))
 
     obj.save()
+    if ipn_signal is not None:
+        ipn_signal.send(sender=obj)
 
     # Ok, no content
     return HttpResponse(status=204)
