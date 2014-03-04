@@ -3,3 +3,4 @@ python-dateutil==2.1
 pytz==2013b
 celery==3.0.12
 django-money
+py-moneyed
