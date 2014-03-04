@@ -1,7 +1,7 @@
 from paypaladaptive.models import Payment, Preapproval, PaypalAdaptive
 import factory
 import uuid
-from money.Money import Money
+from moneyed import Money
 import datetime
 
 

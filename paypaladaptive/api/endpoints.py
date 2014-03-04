@@ -5,7 +5,7 @@ import logging
 
 from django.utils import simplejson as json
 
-from money.Money import Money
+from moneyed import Money
 
 from paypaladaptive import settings
 
@@ -99,12 +99,12 @@ class Pay(PaypalAdaptiveEndpoint):
 
         if (not isinstance(receivers, ReceiverList) or len(receivers) < 1):
             raise ValueError("receivers must be an instance of ReceiverList")
-        
+
         data = {'actionType': 'PAY',
                 'currencyCode': money.currency.code,
                 'returnUrl': return_url,
                 'cancelUrl': cancel_url}
-        
+
         receiverList = {'receiver': receivers.to_dict()}
         data.update({'receiverList': receiverList})
 
@@ -160,7 +160,7 @@ class PaymentDetails(PaypalAdaptiveEndpoint):
 class Refund(PaypalAdaptiveEndpoint):
     """
     Models the Refund API operation
-    
+
     Currently only a full refund is supported.
 
     """
@@ -171,14 +171,14 @@ class Refund(PaypalAdaptiveEndpoint):
     def prepare_data(self, pay_key):
         if not pay_key:
             raise ValueError("a payKey must be provided")
-        
+
         return {'payKey': pay_key}
 
 
 class CancelPreapproval(PaypalAdaptiveEndpoint):
     """
     Models the Cancel Preapproval API operation
-    
+
     Currently only a full refund is supported.
 
     """
@@ -189,14 +189,14 @@ class CancelPreapproval(PaypalAdaptiveEndpoint):
     def prepare_data(self, preapproval_key):
         if not preapproval_key:
             raise ValueError("must provide a preapprovalKey")
-        
+
         return {'preapprovalKey': preapproval_key}
 
 
 class Preapprove(PaypalAdaptiveEndpoint):
     """
     Models the Preapproval API operation
-    
+
     Currently only a single payment with a simple date range is supported
 
     """
@@ -225,7 +225,7 @@ class Preapprove(PaypalAdaptiveEndpoint):
 
         if ipn_url:
             data['ipnNotificationUrl'] = ipn_url
-        
+
         return data
 
     @property
