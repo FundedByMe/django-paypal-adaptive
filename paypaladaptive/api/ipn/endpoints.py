@@ -112,8 +112,8 @@ class IPN(object):
             self.day_of_week = IPN.process_int(request.POST.get('day_of_week', None), None)
             self.starting_date = IPN.process_date(request.POST.get('starting_date', None))
             self.ending_date = IPN.process_date(request.POST.get('ending_date', None))
-            self.max_total_amount_of_all_payments = Money(request.POST.get('max_total_amount_of_all_payments', None),
-                                                          request.POST.get('currency_code', None))
+            self.max_total_amount_of_all_payments = Money(request.POST.get('max_total_amount_of_all_payments', 0.0),
+                                                          request.POST.get('currency_code', settings.DEFAULT_CURRENCY))
             self.max_amount_per_payment = IPN.process_money(request.POST.get('max_amount_per_payment', None))
             self.max_number_of_payments = IPN.process_int(request.POST.get('max_number_of_payments', None))
             self.payment_period = request.POST.get('payment_period', None)
