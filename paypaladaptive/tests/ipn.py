@@ -19,8 +19,6 @@ from helpers import (MockIPNVerifyRequest,
                      mock_ipn_call)
 
 
-
-
 class TestPaymentIPN(test.TestCase):
     def setUp(self):
         self.payment = PaymentFactory.create(status='created')
