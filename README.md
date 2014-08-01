@@ -1,3 +1,5 @@
+We are no longer using PayPal at FundedByMe do to terrible customer service and techincal issues with PayPal. We have now moved to Mangopal and are maintaining django-mangopay a django wrapper for their API. If you are interesting is becoming the offical maintainer of this library please let us know.
+
 Django Paypal Adaptive
 ======================
 
