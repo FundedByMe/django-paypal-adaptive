@@ -33,7 +33,8 @@ def render(request, template, template_vars=None):
         return HttpResponseRedirect(request.GET.get('next'))
 
     context = RequestContext(request)
-    d = {"is_embedded": settings.USE_EMBEDDED}.update(template_vars)
+    d = {"is_embedded": settings.USE_EMBEDDED}
+    d.update(template_vars)
 
     return render_to_response(template, d, context)
 
@@ -48,7 +49,7 @@ def payment_cancel(request, payment_id, secret_uuid,
 
     payment = get_object_or_404(Payment, id=payment_id,
                                 secret_uuid=secret_uuid)
-    
+
     payment.status = 'canceled'
     payment.save()
 

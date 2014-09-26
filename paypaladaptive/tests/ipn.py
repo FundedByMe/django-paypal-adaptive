@@ -3,7 +3,7 @@ from django.contrib.sites.models import Site
 from django.core.urlresolvers import reverse
 from django.http import HttpRequest
 
-from money.Money import Money
+from moneyed import Money
 import mock
 import urlparse
 
@@ -19,8 +19,6 @@ from helpers import (MockIPNVerifyRequest,
                      mock_ipn_call)
 
 
-
-
 class TestPaymentIPN(test.TestCase):
     def setUp(self):
         self.payment = PaymentFactory.create(status='created')
@@ -34,7 +32,7 @@ class TestPaymentIPN(test.TestCase):
         return c.post(url, data=data)
 
     def get_valid_IPN_data(self, money):
-        money = str(money)
+        money = "%s %s" % (money.currency, money.amount)
         return {
             'status': 'COMPLETED',
             'transaction_type': 'Adaptive Payment PAY',
@@ -79,7 +77,8 @@ class TestPaymentIPN(test.TestCase):
     def testMismatchedAmounts(self):
         """Test mismatching amounts"""
 
-        wrong_amount = str(Money("1337.23", 'SEK'))
+        money = Money("1337.23", 'SEK')
+        wrong_amount = "%s %s" % (money.currency, money.amount)
 
         data = {
             'status': 'COMPLETED',
@@ -100,7 +99,7 @@ class TestPaymentIPN(test.TestCase):
         self.assertEqual(payment.status_detail,
                          "IPN amounts didn't match. Payment requested %s. "
                          "Payment made %s"
-                         % (payment.money, wrong_amount))
+                         % (payment.money, money))
 
     def testMismatchedUUID(self):
         """Test error response if invalid secret UUID"""
@@ -112,7 +111,7 @@ class TestPaymentIPN(test.TestCase):
         internal_url = reverse('paypal-adaptive-ipn', kwargs=kwargs)
         ipn_url = "http://%s%s" % (current_site, internal_url)
 
-        money = str(self.payment.money)
+        money = "%s %s" % (self.payment.money.currency, self.payment.money.amount)
         data = {
             'status': 'COMPLETED',
             'transaction_type': 'Adaptive Payment PAY',
@@ -143,7 +142,7 @@ class TestPaymentIPN(test.TestCase):
         internal_url = reverse('paypal-adaptive-ipn', kwargs=kwargs)
         ipn_url = "http://%s%s" % (current_site, internal_url)
 
-        money = str(self.payment.money)
+        money = '%s %s' % (self.payment.money.currency, self.payment.money.amount)
         data = {
             'status': 'COMPLETED',
             'transaction_type': 'Adaptive Payment PAY',

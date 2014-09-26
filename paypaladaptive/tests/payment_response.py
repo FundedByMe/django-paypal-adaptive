@@ -1,7 +1,7 @@
 from django.test import TestCase
 
 from mock import patch
-from money.Money import Money
+from moneyed import Money
 
 from .. import settings
 from ..models import Payment

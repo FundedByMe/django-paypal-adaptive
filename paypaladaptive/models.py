@@ -1,4 +1,5 @@
 """Models to support Paypal Adaptive API"""
+import json
 import logging
 from datetime import datetime, timedelta
 
@@ -6,9 +7,8 @@ from django.core.urlresolvers import reverse
 from django.db import models, transaction
 from django.utils.translation import ugettext_lazy as _
 from django.contrib.sites.models import Site
-from django.utils import simplejson as json
 
-from money.contrib.django.models.fields import MoneyField
+from djmoney.models.fields import MoneyField
 
 import settings
 import api
@@ -22,13 +22,13 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class UUIDField(models.CharField) :
+class UUIDField(models.CharField):
     """Django db field using python's uuid4 library"""
 
     def __init__(self, *args, **kwargs):
         kwargs['max_length'] = kwargs.get('max_length', 32)
         models.CharField.__init__(self, *args, **kwargs)
-    
+
     def pre_save(self, model_instance, add):
         if add:
             value = getattr(model_instance, self.attname)
@@ -86,7 +86,7 @@ class PaypalAdaptive(models.Model):
                   'object_secret_uuid': self.secret_uuid}
         ipn_url = reverse('paypal-adaptive-ipn', kwargs=kwargs)
         return "http://%s%s" % (current_site, ipn_url)
-    
+
     class Meta:
         abstract = True
 
@@ -241,9 +241,9 @@ class Payment(PaypalAdaptive):
             self.status = 'created'
         else:
             self.status = 'error'
-            
+
         self.save()
-        
+
         return self.status in ['created', 'completed']
 
     @transaction.autocommit
@@ -253,7 +253,7 @@ class Payment(PaypalAdaptive):
         # TODO: flow should create a Refund object and call Refund.process()
 
         self.save()
-        
+
         if self.status != 'completed':
             raise ValueError('Cannot refund a Payment until it is completed.')
 
@@ -261,7 +261,7 @@ class Payment(PaypalAdaptive):
 
         self.status = 'refunded'
         self.save()
-    
+
         refund = Refund(payment=self,
                         debug_request=json.dumps(refund_call.data),
                         debug_response=refund_call.raw_response)
@@ -287,7 +287,7 @@ class Payment(PaypalAdaptive):
     def next_url(self):
         return ('%s?cmd=_ap-payment&paykey=%s'
                 % (settings.PAYPAL_PAYMENT_HOST, self.pay_key))
-            
+
     def __unicode__(self):
         return self.pay_key
 
@@ -296,10 +296,10 @@ class Refund(PaypalAdaptive):
     """Models a refund make using Paypal"""
 
     STATUS_CHOICES = (
-        ('new', _(u'New')), 
-        ('created', _(u'Created')), 
-        ('error', _(u'Error')), 
-        ('canceled', _(u'Canceled')), 
+        ('new', _(u'New')),
+        ('created', _(u'Created')),
+        ('error', _(u'Error')),
+        ('canceled', _(u'Canceled')),
         ('returned', _(u'Returned')),
         ('completed', _(u'Completed')),
     )
@@ -308,7 +308,7 @@ class Refund(PaypalAdaptive):
     status = models.CharField(_(u'status'), max_length=10,
                               choices=STATUS_CHOICES, default='new')
     status_detail = models.CharField(_(u'detailed status'), max_length=2048)
-    
+
     # TODO: finish model
 
 
@@ -329,7 +329,7 @@ class Preapproval(PaypalAdaptive):
         ('used', _(u'Used')),
         ('returned', _(u'Returned')),
     )
-    
+
     valid_until_date = models.DateTimeField(_(u'valid until'),
                                             default=default_valid_date)
     preapproval_key = models.CharField(_(u'preapprovalkey'), max_length=255)
@@ -390,17 +390,17 @@ class Preapproval(PaypalAdaptive):
         endpoint_kwargs.update(**kwargs)
 
         res, preapprove = self.call(api.Preapprove, **endpoint_kwargs)
-    
+
         if preapprove.preapprovalkey:
             self.preapproval_key = preapprove.preapprovalkey
             self.status = 'created'
         else:
             self.status = 'error'
-            
+
         self.save()
-        
+
         return self.status == 'created'
-        
+
     @transaction.autocommit
     def cancel_preapproval(self):
         res, cancel = self.call(api.CancelPreapproval,
@@ -411,12 +411,12 @@ class Preapproval(PaypalAdaptive):
         self.status = 'canceled'
         self.save()
         return self.status == 'canceled'
-        
+
     @transaction.autocommit
     def mark_as_used(self):
         self.status = 'used'
         self.save()
-        
+
         return self.status == 'used'
 
     def get_update_kwargs(self):
@@ -446,7 +446,7 @@ class Preapproval(PaypalAdaptive):
         """Custom next URL"""
         return ('%s?cmd=_ap-preapproval&preapprovalkey=%s'
                 % (settings.PAYPAL_PAYMENT_HOST, self.preapproval_key))
-            
+
     def __unicode__(self):
         return self.preapproval_key
 

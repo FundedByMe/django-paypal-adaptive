@@ -1,10 +1,8 @@
 import logging
-import  urllib
-
-from django.utils import simplejson
+import urllib
 
 from dateutil.parser import parse
-from money.Money import Money, Currency
+from moneyed import Money, Currency
 from pytz import utc
 
 from constants import *
@@ -19,7 +17,7 @@ logger = logging.getLogger(__name__)
 class IPN(object):
     """
     Models the IPN API response
-    
+
     Note that this model is specific to the Paypal Adaptive API; it cannot
     handle IPNs from the standard Paypal checkout.
 
@@ -38,11 +36,11 @@ class IPN(object):
             self.refund_account_charged = kwargs.get('refund_account_charged',
                                                      None)
             self.receiver = kwargs.get('receiver', None)
-            self.invoiceId = kwargs.get('invoiceId', None)            
+            self.invoiceId = kwargs.get('invoiceId', None)
             self.amount = IPN.process_money(kwargs.get('amount', None))
             self.is_primary_receiver = (kwargs.get('is_primary_receiver', '')
                                         == 'true')
-            
+
         @classmethod
         def slicedict(cls, d, s):
             """
@@ -82,7 +80,7 @@ class IPN(object):
             self.type = raw_type
         else:
             raise IpnError('Unknown transaction_type received: %s' % raw_type)
-        
+
         self.process_transactions(request)
 
         try:
@@ -97,13 +95,13 @@ class IPN(object):
             self.ipn_notification_url = request.POST.get('ipn_notification_url', None)
             self.pay_key = request.POST.get('pay_key', None)
             self.memo = request.POST.get('memo', None)
-            self.fees_payer = request.POST.get('fees_payer', None) 
+            self.fees_payer = request.POST.get('fees_payer', None)
             self.trackingId = request.POST.get('trackingId', None)
             self.preapproval_key = request.POST.get('preapproval_key', None)
             self.reason_code = request.POST.get('reason_code', None)
 
             # preapprovals define these
-            self.approved = request.POST.get('approved', 'false') == 'true'            
+            self.approved = request.POST.get('approved', 'false') == 'true'
             self.current_number_of_payments = IPN.process_int(request.POST.get('current_number_of_payments', None))
             self.current_total_amount_of_all_payments = IPN.process_money(request.POST.get('current_total_amount_of_all_payments', None))
             self.current_period_attempts = IPN.process_int(request.POST.get('current_period_attempts', None))
@@ -112,8 +110,8 @@ class IPN(object):
             self.day_of_week = IPN.process_int(request.POST.get('day_of_week', None), None)
             self.starting_date = IPN.process_date(request.POST.get('starting_date', None))
             self.ending_date = IPN.process_date(request.POST.get('ending_date', None))
-            self.max_total_amount_of_all_payments = Money(request.POST.get('max_total_amount_of_all_payments', None),
-                                                          request.POST.get('currency_code', None))
+            self.max_total_amount_of_all_payments = Money(request.POST.get('max_total_amount_of_all_payments', 0.0),
+                                                          request.POST.get('currency_code', settings.DEFAULT_CURRENCY))
             self.max_amount_per_payment = IPN.process_money(request.POST.get('max_amount_per_payment', None))
             self.max_number_of_payments = IPN.process_int(request.POST.get('max_number_of_payments', None))
             self.payment_period = request.POST.get('payment_period', None)
@@ -121,7 +119,7 @@ class IPN(object):
         except Exception, e:
             logger.error('Could not parse request')
             raise e
-        
+
         # Verify enumerations
         allowed_statuses = [IPN_STATUS_CREATED,
                             IPN_STATUS_COMPLETED,
@@ -135,7 +133,7 @@ class IPN(object):
 
         if self.status and self.status not in allowed_statuses:
             raise IpnError("unknown status: %s" % self.status)
-        
+
         if (self.action_type
             and self.action_type not in [IPN_ACTION_TYPE_PAY,
                                          IPN_ACTION_TYPE_CREATE]):
@@ -158,9 +156,9 @@ class IPN(object):
                 if default == 'null':
                     raise e
 
-        
+
         return val
-    
+
     @classmethod
     def process_money(cls, money_str):
         """
@@ -174,7 +172,7 @@ class IPN(object):
             money_args.reverse()
             if money_args and len(money_args) == 2:
                 return Money(*money_args)
-        
+
         return None
 
     @classmethod
@@ -187,9 +185,9 @@ class IPN(object):
 
         if not date_str:
             return None
-        
+
         return parse(date_str, tzinfos=IPN_TIMEZONES).astimezone(utc)
-    
+
     def process_transactions(self, request):
         """
         Paypal sends transactions in the form transaction[n].[attribute], where

@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from money.Money import Money
+from moneyed import Money
 
 from ..models import Payment
 from .factories import PaymentFactory
