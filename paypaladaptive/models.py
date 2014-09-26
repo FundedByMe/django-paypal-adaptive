@@ -1,4 +1,5 @@
 """Models to support Paypal Adaptive API"""
+import json
 import logging
 from datetime import datetime, timedelta
 
@@ -6,7 +7,6 @@ from django.core.urlresolvers import reverse
 from django.db import models, transaction
 from django.utils.translation import ugettext_lazy as _
 from django.contrib.sites.models import Site
-from django.utils import simplejson as json
 
 from djmoney.models.fields import MoneyField
 

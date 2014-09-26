@@ -1,9 +1,8 @@
 """Endpoints for (parts of) Paypal Adaptive API."""
 
 from datetime import datetime, timedelta
+import json
 import logging
-
-from django.utils import simplejson as json
 
 from moneyed import Money
 
