@@ -29,7 +29,7 @@ class IPN(object):
         def __init__(self, **kwargs):
             self.id = kwargs.get('id', None)
             self.status = kwargs.get('status', None)
-            self.id_for_sender = kwargs.get('id_for_sender', None)
+            self.id_for_sender_txn = kwargs.get('id_for_sender_txn', None)
             self.status_for_sender_txn = kwargs.get('status_for_sender_txn',
                                                     None)
             self.refund_id = kwargs.get('refund_id', None)
