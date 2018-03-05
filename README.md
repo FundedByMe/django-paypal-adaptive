@@ -4,7 +4,7 @@ Django Paypal Adaptive
 ======================
 
 [![Build Status](https://travis-ci.org/FundedByMe/django-paypal-adaptive.png?branch=master)](https://travis-ci.org/FundedByMe/django-paypal-adaptive)
-[![Downloads](https://pypip.in/v/django-paypal-adaptive/badge.png)](https://pypi.python.org/pypi/django-paypal-adaptive)
+[![Downloads](https://img.shields.io/pypi/v/django-paypal-adaptive.svg)](https://pypi.python.org/pypi/django-paypal-adaptive)
 
 The API and the modules in this repository might be subject to smaller
 changes and not all Paypal Adaptive endpoints are covered. FundedByMe
